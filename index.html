@@ -528,6 +528,10 @@ var state = {
   allergyCheck: { busy: false, risk: null, explanation: null, error: null },
   activeAlert: null,
   firedKeys: {},
+  escalatedKeys: {},
+  caregiverSmsUrl: (function(){ try { return localStorage.getItem('medclear_caregiver_sms_url') || ''; } catch(e){ return ''; } })(),
+  caregiverSmsBusy: false,
+  caregiverSmsLastResult: null,
   voiceEnabled: true,
   checkin: { messages: [], ended: false, busy: false },
   checkinLog: {},
@@ -597,6 +601,53 @@ function clearApiKey(){
   state.apiKey = '';
   try { localStorage.removeItem('medclear_gemini_api_key'); } catch(e){ /* ignore */ }
   render();
+}
+
+function saveCaregiverSmsUrl(){
+  var el = document.getElementById('f-caregiver-url');
+  var val = el ? el.value.trim() : '';
+  state.caregiverSmsUrl = val;
+  state.caregiverSmsLastResult = null;
+  try { localStorage.setItem('medclear_caregiver_sms_url', val); } catch(e){ /* ignore storage errors */ }
+  render();
+}
+
+function clearCaregiverSmsUrl(){
+  state.caregiverSmsUrl = '';
+  state.caregiverSmsLastResult = null;
+  try { localStorage.removeItem('medclear_caregiver_sms_url'); } catch(e){ /* ignore */ }
+  render();
+}
+
+function sendCaregiverSms(message){
+  if (!state.caregiverSmsUrl || !state.emergencyContactPhone) return Promise.resolve(false);
+  var body = new URLSearchParams();
+  body.set('to', state.emergencyContactPhone);
+  body.set('body', message);
+  return fetch(state.caregiverSmsUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString()
+  }).then(function(res){ return res.ok; }).catch(function(){ return false; });
+}
+
+function sendTestCaregiverSms(){
+  if (!state.caregiverSmsUrl){
+    alert('Add your SMS relay URL first.');
+    return;
+  }
+  if (!state.emergencyContactPhone){
+    alert('Add an emergency contact phone number in Personal information first.');
+    return;
+  }
+  state.caregiverSmsBusy = true;
+  state.caregiverSmsLastResult = null;
+  render();
+  sendCaregiverSms('This is a test alert from GitPill. If you received this, family member alerts are set up correctly.').then(function(ok){
+    state.caregiverSmsBusy = false;
+    state.caregiverSmsLastResult = ok ? 'sent' : 'failed';
+    render();
+  });
 }
 
 function loadPersonalInfo(){
@@ -1488,13 +1539,11 @@ function renderSettings(){
     '<div class="settings-section">' +
       '<h3>Notifications</h3>' +
       notifBlock +
-      '<div class="toggle-row"><span>Let a family member see missed doses</span>' +
-        '<div class="switch '+(state.caregiverAlerts?'on':'')+'" onclick="toggleCaregiver()"><div class="knob"></div></div>' +
-      '</div>' +
       '<div class="toggle-row"><span>Have the daily check-in speak out loud</span>' +
         '<div class="switch '+(state.voiceEnabled?'on':'')+'" onclick="toggleVoice()"><div class="knob"></div></div>' +
       '</div>' +
     '</div>' +
+    caregiverSectionHtml() +
     '<div class="settings-section">' +
       '<h3>Try it out</h3>' +
       '<p class="lede">These trigger a real notification right now if permission is on, so you can see what your phone would show.</p>' +
@@ -1550,6 +1599,40 @@ function apiKeySectionHtml(){
     '<button class="btn btn-secondary" onclick="saveApiKey()">Save key</button>' +
     (hasKey ? '<div style="height:8px;"></div><button class="btn btn-ghost" onclick="clearApiKey()">Remove saved key</button>' : '') +
     '<p class="disclaimer" style="margin-top:10px;">Get a key at aistudio.google.com/apikey. It\'s stored only in this browser (never sent anywhere but Google\'s API), but anyone with access to this device or its saved browser data could read it — don\'t use this on a shared or public computer.</p>' +
+  '</div>';
+}
+
+function caregiverSectionHtml(){
+  var hasUrl = !!state.caregiverSmsUrl;
+  var hasPhone = !!state.emergencyContactPhone;
+  var urlStatus = hasUrl
+    ? '<div class="notif-status granted">Relay configured — SMS alerts are active.</div>'
+    : '<div class="notif-status pending">No relay URL set yet, so alerts will not be sent even if the toggle above is on.</div>';
+  var phoneNote = hasPhone ? '' :
+    '<p class="disclaimer" style="margin-top:6px;">Add an emergency contact phone number in Personal information above to enable this.</p>';
+  var testResult = '';
+  if (state.caregiverSmsLastResult === 'sent'){
+    testResult = '<div class="notif-status granted" style="margin-top:8px;">Test message sent.</div>';
+  } else if (state.caregiverSmsLastResult === 'failed'){
+    testResult = '<div class="notice" style="margin-top:8px;">Could not send the test message. Check the relay URL and try again.</div>';
+  }
+  return '<div class="settings-section">' +
+    '<h3>Family member alerts</h3>' +
+    '<p class="lede">If a scheduled dose is not marked as taken within '+MISSED_DOSE_GRACE_MINUTES+' minutes, we can text your emergency contact so they know to check in.</p>' +
+    '<div class="toggle-row"><span>Text a family member about missed doses</span>' +
+      '<div class="switch '+(state.caregiverAlerts?'on':'')+'" onclick="toggleCaregiver()"><div class="knob"></div></div>' +
+    '</div>' +
+    urlStatus +
+    phoneNote +
+    '<label class="field-label">SMS relay URL</label>' +
+    '<input type="text" id="f-caregiver-url" placeholder="https://yourname.twil.io/send-alert" value="'+escapeAttr(state.caregiverSmsUrl)+'">' +
+    '<div style="height:10px;"></div>' +
+    '<button class="btn btn-secondary" onclick="saveCaregiverSmsUrl()">Save relay URL</button>' +
+    (hasUrl ? '<div style="height:8px;"></div><button class="btn btn-ghost" onclick="clearCaregiverSmsUrl()">Remove relay URL</button>' : '') +
+    '<div style="height:10px;"></div>' +
+    '<button class="btn btn-secondary" onclick="sendTestCaregiverSms()"'+(state.caregiverSmsBusy?' disabled':'')+'>'+(state.caregiverSmsBusy?'Sending…':'Send a test caregiver SMS')+'</button>' +
+    testResult +
+    '<p class="disclaimer" style="margin-top:10px;">Texts go to the emergency contact phone number saved in Personal information, through a small relay you set up yourself so your SMS provider credentials never sit in this browser. See twilio-send-alert.js in the project for setup steps.</p>' +
   '</div>';
 }
 
@@ -1825,6 +1908,34 @@ function checkReminders(){
   }
 }
 setInterval(checkReminders, 15000);
+
+var MISSED_DOSE_GRACE_MINUTES = 30;
+
+function minutesSinceDue(hhmm){
+  var parts = hhmm.split(':');
+  var due = new Date();
+  due.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
+  return (Date.now() - due.getTime()) / 60000;
+}
+
+function checkMissedDoseEscalation(){
+  if (!state.caregiverAlerts || !state.caregiverSmsUrl || !state.emergencyContactPhone) return;
+  var today = todayKey();
+  state.meds.forEach(function(med){
+    if (med.type === 'prn') return;
+    med.times.forEach(function(t){
+      var key = med.id + '_' + t + '_' + today;
+      if (state.takenLog[key] || state.escalatedKeys[key]) return;
+      if (minutesSinceDue(t) < MISSED_DOSE_GRACE_MINUTES) return;
+      state.escalatedKeys[key] = true;
+      sendCaregiverSms(
+        (state.userName || 'Your family member') + ' has not marked ' + med.name + ' ' + med.dosage +
+        ' as taken (due at ' + formatTime(t) + ').'
+      );
+    });
+  });
+}
+setInterval(checkMissedDoseEscalation, 30000);
 
 function readFileAsDataUrl(file){
   return new Promise(function(resolve, reject){
