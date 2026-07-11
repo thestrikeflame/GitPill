@@ -380,6 +380,8 @@
 <input type="file" id="galleryInput" accept="image/*" style="display:none">
 
 <script>
+var PERSONAL_INFO_FIELDS = ['name', 'dob', 'allergies', 'emergencyContactName', 'emergencyContactPhone', 'doctorName', 'doctorPhone', 'pharmacyName', 'pharmacyPhone'];
+
 var state = {
   view: 'home',
   textSize: 'standard',
@@ -438,8 +440,16 @@ var state = {
   fontFamily: 'atkinson',
   notifPermission: ('Notification' in window) ? Notification.permission : 'unsupported',
   cameraSupported: null,
-  apiKey: (function(){ try { return localStorage.getItem('medclear_api_key') || ''; } catch(e){ return ''; } })(),
-  userName: (function(){ try { return localStorage.getItem('medclear_user_name') || ''; } catch(e){ return ''; } })(),
+  apiKey: (function(){ try { return localStorage.getItem('medclear_gemini_api_key') || ''; } catch(e){ return ''; } })(),
+  userName: loadPersonalInfo().name,
+  dob: loadPersonalInfo().dob,
+  allergies: loadPersonalInfo().allergies,
+  emergencyContactName: loadPersonalInfo().emergencyContactName,
+  emergencyContactPhone: loadPersonalInfo().emergencyContactPhone,
+  doctorName: loadPersonalInfo().doctorName,
+  doctorPhone: loadPersonalInfo().doctorPhone,
+  pharmacyName: loadPersonalInfo().pharmacyName,
+  pharmacyPhone: loadPersonalInfo().pharmacyPhone,
   dispenser: {
     supported: ('serial' in navigator),
     connecting: false,
@@ -455,42 +465,80 @@ var state = {
 
 var DISPENSER_BOX_COUNT = 4;
 
-var CLAUDE_MODEL = 'claude-sonnet-5';
+var GEMINI_MODEL = 'gemini-3.5-flash';
+var GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent';
 
-function anthropicHeaders(){
+function geminiHeaders(){
   return {
     'Content-Type': 'application/json',
-    'x-api-key': state.apiKey,
-    'anthropic-version': '2023-06-01',
-    'anthropic-dangerous-direct-browser-access': 'true'
+    'x-goog-api-key': state.apiKey
   };
+}
+
+function geminiText(data){
+  var cand = (data.candidates || [])[0];
+  var parts = (cand && cand.content && cand.content.parts) || [];
+  return parts.map(function(p){ return p.text || ''; }).join('');
 }
 
 function saveApiKey(){
   var el = document.getElementById('f-apikey');
   var val = el ? el.value.trim() : '';
   state.apiKey = val;
-  try { localStorage.setItem('medclear_api_key', val); } catch(e){ /* ignore storage errors */ }
+  try { localStorage.setItem('medclear_gemini_api_key', val); } catch(e){ /* ignore storage errors */ }
   render();
 }
 
 function clearApiKey(){
   state.apiKey = '';
-  try { localStorage.removeItem('medclear_api_key'); } catch(e){ /* ignore */ }
+  try { localStorage.removeItem('medclear_gemini_api_key'); } catch(e){ /* ignore */ }
   render();
 }
 
-function saveUserName(){
-  var el = document.getElementById('f-username');
-  var val = el ? el.value.trim() : '';
-  state.userName = val;
-  try { localStorage.setItem('medclear_user_name', val); } catch(e){ /* ignore storage errors */ }
+function loadPersonalInfo(){
+  var result = {};
+  try {
+    var parsed = JSON.parse(localStorage.getItem('medclear_personal_info') || '{}');
+    PERSONAL_INFO_FIELDS.forEach(function(key){ result[key] = parsed[key] || ''; });
+  } catch(e){
+    PERSONAL_INFO_FIELDS.forEach(function(key){ result[key] = ''; });
+  }
+  return result;
+}
+
+function savePersonalInfo(){
+  var val = function(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  state.userName = val('f-username');
+  state.dob = val('f-dob');
+  state.allergies = val('f-allergies');
+  state.emergencyContactName = val('f-emergency-name');
+  state.emergencyContactPhone = val('f-emergency-phone');
+  state.doctorName = val('f-doctor-name');
+  state.doctorPhone = val('f-doctor-phone');
+  state.pharmacyName = val('f-pharmacy-name');
+  state.pharmacyPhone = val('f-pharmacy-phone');
+  try {
+    localStorage.setItem('medclear_personal_info', JSON.stringify({
+      name: state.userName, dob: state.dob, allergies: state.allergies,
+      emergencyContactName: state.emergencyContactName, emergencyContactPhone: state.emergencyContactPhone,
+      doctorName: state.doctorName, doctorPhone: state.doctorPhone,
+      pharmacyName: state.pharmacyName, pharmacyPhone: state.pharmacyPhone
+    }));
+  } catch(e){ /* ignore storage errors */ }
   render();
 }
 
-function clearUserName(){
+function clearPersonalInfo(){
   state.userName = '';
-  try { localStorage.removeItem('medclear_user_name'); } catch(e){ /* ignore */ }
+  state.dob = '';
+  state.allergies = '';
+  state.emergencyContactName = '';
+  state.emergencyContactPhone = '';
+  state.doctorName = '';
+  state.doctorPhone = '';
+  state.pharmacyName = '';
+  state.pharmacyPhone = '';
+  try { localStorage.removeItem('medclear_personal_info'); } catch(e){ /* ignore */ }
   render();
 }
 
@@ -1133,7 +1181,7 @@ function renderConfirm(){
   if (!ex.conditions) ex.conditions = [];
   var notice;
   if (state.scanError === 'nokey'){
-    notice = '<div class="notice">No Anthropic API key is set, so the photo couldn\'t be read automatically. Add one in Settings, or just fill in the details below by hand.</div>';
+    notice = '<div class="notice">No Google Gemini API key is set, so the photo couldn\'t be read automatically. Add one in Settings, or just fill in the details below by hand.</div>';
   } else if (state.scanError){
     var detail = state.scanErrorDetail ? (' (' + escapeHtml(state.scanErrorDetail) + ')') : '';
     notice = '<div class="notice">We had trouble reading the label automatically'+detail+'. Please check or fill in the details below.</div>';
@@ -1277,15 +1325,31 @@ function renderSettings(){
 }
 
 function personalInfoSectionHtml(){
-  var hasName = !!state.userName;
+  var hasAny = PERSONAL_INFO_FIELDS.some(function(key){ return !!state[key === 'name' ? 'userName' : key]; });
   return '<div class="settings-section">' +
     '<h3>Personal information</h3>' +
-    '<p class="lede">Add your name so the app can greet you personally.</p>' +
+    '<p class="lede">Used to greet you by name and to fill in your printed health summary — not used for dosing calculations.</p>' +
     '<label class="field-label">Your name</label>' +
     '<input type="text" id="f-username" placeholder="e.g. Sam" value="'+escapeAttr(state.userName)+'" autocomplete="given-name">' +
+    '<label class="field-label">Date of birth</label>' +
+    '<input type="date" id="f-dob" value="'+escapeAttr(state.dob)+'" autocomplete="bday">' +
+    '<label class="field-label">Known allergies</label>' +
+    '<input type="text" id="f-allergies" placeholder="e.g. Penicillin, Peanuts" value="'+escapeAttr(state.allergies)+'">' +
+    '<label class="field-label">Emergency contact name</label>' +
+    '<input type="text" id="f-emergency-name" placeholder="e.g. Jordan (daughter)" value="'+escapeAttr(state.emergencyContactName)+'">' +
+    '<label class="field-label">Emergency contact phone</label>' +
+    '<input type="tel" id="f-emergency-phone" placeholder="e.g. (555) 123-4567" value="'+escapeAttr(state.emergencyContactPhone)+'">' +
+    '<label class="field-label">Primary doctor name</label>' +
+    '<input type="text" id="f-doctor-name" placeholder="e.g. Dr. Patel" value="'+escapeAttr(state.doctorName)+'">' +
+    '<label class="field-label">Primary doctor phone</label>' +
+    '<input type="tel" id="f-doctor-phone" placeholder="e.g. (555) 234-5678" value="'+escapeAttr(state.doctorPhone)+'">' +
+    '<label class="field-label">Pharmacy name</label>' +
+    '<input type="text" id="f-pharmacy-name" placeholder="e.g. Main Street Pharmacy" value="'+escapeAttr(state.pharmacyName)+'">' +
+    '<label class="field-label">Pharmacy phone</label>' +
+    '<input type="tel" id="f-pharmacy-phone" placeholder="e.g. (555) 345-6789" value="'+escapeAttr(state.pharmacyPhone)+'">' +
     '<div style="height:10px;"></div>' +
-    '<button class="btn btn-secondary" onclick="saveUserName()">Save name</button>' +
-    (hasName ? '<div style="height:8px;"></div><button class="btn btn-ghost" onclick="clearUserName()">Remove name</button>' : '') +
+    '<button class="btn btn-secondary" onclick="savePersonalInfo()">Save personal information</button>' +
+    (hasAny ? '<div style="height:8px;"></div><button class="btn btn-ghost" onclick="clearPersonalInfo()">Clear all</button>' : '') +
   '</div>';
 }
 
@@ -1296,15 +1360,15 @@ function apiKeySectionHtml(){
     ? '<div class="notif-status granted">Key saved ('+escapeHtml(masked)+'). Automatic label reading and the daily check-in chat are active.</div>'
     : '<div class="notif-status pending">No key set yet. Scanning a label will just open a blank form to fill in by hand, and the check-in chat won\'t be able to reply.</div>';
   return '<div class="settings-section">' +
-    '<h3>AI label reading</h3>' +
-    '<p class="lede">Reading pill bottle photos and running the daily check-in chat both call the Anthropic API directly from this browser. Add your own API key to turn them on.</p>' +
+    '<h3>AI features (Google Gemini)</h3>' +
+    '<p class="lede">Reading pill bottle photos and running the daily check-in chat both call the Google Gemini API directly from this browser. Add your own API key to turn them on.</p>' +
     status +
-    '<label class="field-label">Anthropic API key</label>' +
-    '<input type="password" id="f-apikey" placeholder="sk-ant-…" value="" autocomplete="off">' +
+    '<label class="field-label">Google Gemini API key</label>' +
+    '<input type="password" id="f-apikey" placeholder="AIza…" value="" autocomplete="off">' +
     '<div style="height:10px;"></div>' +
     '<button class="btn btn-secondary" onclick="saveApiKey()">Save key</button>' +
     (hasKey ? '<div style="height:8px;"></div><button class="btn btn-ghost" onclick="clearApiKey()">Remove saved key</button>' : '') +
-    '<p class="disclaimer" style="margin-top:10px;">Get a key at console.anthropic.com. It\'s stored only in this browser (never sent anywhere but Anthropic\'s API), but anyone with access to this device or its saved browser data could read it — don\'t use this on a shared or public computer.</p>' +
+    '<p class="disclaimer" style="margin-top:10px;">Get a key at aistudio.google.com/apikey. It\'s stored only in this browser (never sent anywhere but Google\'s API), but anyone with access to this device or its saved browser data could read it — don\'t use this on a shared or public computer.</p>' +
   '</div>';
 }
 
@@ -1630,19 +1694,18 @@ function analyzePhoto(dataUrl, mime){
     'clearly legible, make your best reasonable guess; if you cannot identify the medication at all, leave these ' +
     'fields empty.';
 
-  return fetch('https://api.anthropic.com/v1/messages', {
+  return fetch(GEMINI_ENDPOINT, {
     method: 'POST',
-    headers: anthropicHeaders(),
+    headers: geminiHeaders(),
     body: JSON.stringify({
-      model: CLAUDE_MODEL,
-      max_tokens: 1000,
-      messages: [{
+      contents: [{
         role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mime, data: base64 } },
-          { type: 'text', text: prompt }
+        parts: [
+          { inline_data: { mime_type: mime, data: base64 } },
+          { text: prompt }
         ]
-      }]
+      }],
+      generationConfig: { maxOutputTokens: 1000, thinkingConfig: { thinkingBudget: 0 } }
     })
   }).then(function(res){
     if (!res.ok){
@@ -1653,8 +1716,7 @@ function analyzePhoto(dataUrl, mime){
     }
     return res.json();
   }).then(function(data){
-    var textBlock = (data.content || []).find(function(c){ return c.type === 'text'; });
-    var raw = textBlock ? textBlock.text : '';
+    var raw = geminiText(data);
     var cleaned = raw.replace(/```json|```/g, '').trim();
     var parsed;
     try { parsed = JSON.parse(cleaned); } catch (err) { parsed = null; }
@@ -1722,7 +1784,7 @@ function lookupMedInfo(){
     return;
   }
   if (!state.apiKey){
-    alert('Add an Anthropic API key in Settings to look up medication info.');
+    alert('Add a Google Gemini API key in Settings to look up medication info.');
     return;
   }
   state.medInfoLookupBusy = true;
@@ -1739,7 +1801,7 @@ function lookupMedInfo(){
     'taking it (such as taking it with water or food, or timing around other medications). warnings should be a ' +
     'short list (1-4 items) of important safety warnings, including alcohol and pregnancy/breastfeeding ' +
     'precautions when relevant. This is for general reference only, not medical advice.';
-  callClaude('', [{ role: 'user', content: prompt }], 500).then(function(text){
+  callGemini('', [{ role: 'user', content: prompt }], 500).then(function(text){
     var cleaned = (text || '').replace(/```json|```/g, '').trim();
     var parsed;
     try { parsed = JSON.parse(cleaned); } catch (e) { parsed = null; }
@@ -1763,15 +1825,18 @@ function lookupMedInfo(){
   });
 }
 
-function callClaude(system, messages, maxTokens){
+function callGemini(system, messages, maxTokens){
   if (!state.apiKey){
     return Promise.reject(new Error('No API key set'));
   }
-  var body = { model: CLAUDE_MODEL, max_tokens: maxTokens || 300, messages: messages };
-  if (system) body.system = system;
-  return fetch('https://api.anthropic.com/v1/messages', {
+  var contents = messages.map(function(m){
+    return { role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] };
+  });
+  var body = { contents: contents, generationConfig: { maxOutputTokens: maxTokens || 300, thinkingConfig: { thinkingBudget: 0 } } };
+  if (system) body.systemInstruction = { parts: [{ text: system }] };
+  return fetch(GEMINI_ENDPOINT, {
     method: 'POST',
-    headers: anthropicHeaders(),
+    headers: geminiHeaders(),
     body: JSON.stringify(body)
   }).then(function(res){
     if (!res.ok){
@@ -1782,8 +1847,7 @@ function callClaude(system, messages, maxTokens){
     }
     return res.json();
   }).then(function(data){
-    var block = (data.content || []).find(function(c){ return c.type === 'text'; });
-    return block ? block.text : '';
+    return geminiText(data);
   });
 }
 
@@ -1803,14 +1867,14 @@ function sendCheckinMessage(){
   if (!text || state.checkin.busy) return;
   state.checkin.messages.push({ role: 'user', text: text });
   if (!state.apiKey){
-    state.checkin.messages.push({ role: 'assistant', text: "I can't reply yet — no Anthropic API key is set. Add one in Settings, or tap \"End check-in\" below to finish without the chat." });
+    state.checkin.messages.push({ role: 'assistant', text: "I can't reply yet — no Google Gemini API key is set. Add one in Settings, or tap \"End check-in\" below to finish without the chat." });
     if (box) box.value = '';
     render();
     return;
   }
   state.checkin.busy = true;
   render();
-  callClaude(CHECKIN_SYSTEM_PROMPT, getApiMessages(), 300).then(function(text){
+  callGemini(CHECKIN_SYSTEM_PROMPT, getApiMessages(), 300).then(function(text){
     var reply = text || "Thanks for telling me that.";
     state.checkin.messages.push({ role: 'assistant', text: reply });
     state.checkin.busy = false;
@@ -1832,7 +1896,7 @@ function endCheckin(){
     finishCheckin('none', 'No pain or discomfort reported today.');
     return;
   }
-  callClaude(CHECKIN_SUMMARY_PROMPT, apiMsgs, 200).then(function(text){
+  callGemini(CHECKIN_SUMMARY_PROMPT, apiMsgs, 200).then(function(text){
     var cleaned = (text || '').replace(/```json|```/g, '').trim();
     var parsed;
     try { parsed = JSON.parse(cleaned); } catch (e) { parsed = null; }
@@ -1869,7 +1933,7 @@ function renderCheckin(){
     ? ('<button class="mic-btn '+(state.listening?'listening':'')+'" onclick="toggleListening()" aria-label="Speak your answer">' +
        '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0"/><path d="M12 18v3"/></svg></button>')
     : '';
-  var noKeyNotice = state.apiKey ? '' : '<div class="notice">No Anthropic API key is set, so the check-in chat can\'t reply yet. Add one in Settings to enable it.</div>';
+  var noKeyNotice = state.apiKey ? '' : '<div class="notice">No Google Gemini API key is set, so the check-in chat can\'t reply yet. Add one in Settings to enable it.</div>';
   document.getElementById('screen').innerHTML =
     '<h2 class="title">Daily check-in</h2>' +
     '<p class="disclaimer">This is a supportive check-in, not medical care. If this is an emergency, call 911 or your local emergency number.</p>' +
@@ -1931,6 +1995,40 @@ function addManualNote(){
   render();
 }
 
+function computeAge(dobStr){
+  if (!dobStr) return null;
+  var dob = new Date(dobStr + 'T00:00:00');
+  if (isNaN(dob.getTime())) return null;
+  var today = new Date();
+  var age = today.getFullYear() - dob.getFullYear();
+  var m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+  return age;
+}
+
+function personalSummaryCardHtml(){
+  var hasAny = PERSONAL_INFO_FIELDS.some(function(key){ return !!state[key === 'name' ? 'userName' : key]; });
+  if (!hasAny) return '';
+  var age = computeAge(state.dob);
+  var rows = [];
+  if (state.userName) rows.push(['Name', state.userName]);
+  if (state.dob) rows.push(['Date of birth', expiryLabel(state.dob) + (age !== null ? (' (age ' + age + ')') : '')]);
+  if (state.allergies) rows.push(['Known allergies', state.allergies]);
+  if (state.emergencyContactName || state.emergencyContactPhone) {
+    rows.push(['Emergency contact', [state.emergencyContactName, state.emergencyContactPhone].filter(Boolean).join(' · ')]);
+  }
+  if (state.doctorName || state.doctorPhone) {
+    rows.push(['Primary doctor', [state.doctorName, state.doctorPhone].filter(Boolean).join(' · ')]);
+  }
+  if (state.pharmacyName || state.pharmacyPhone) {
+    rows.push(['Pharmacy', [state.pharmacyName, state.pharmacyPhone].filter(Boolean).join(' · ')]);
+  }
+  var rowsHtml = rows.map(function(r){
+    return '<p class="med-meta" style="margin:0 0 4px;"><strong>'+escapeHtml(r[0])+':</strong> '+escapeHtml(r[1])+'</p>';
+  }).join('');
+  return '<div class="card">' + rowsHtml + '</div>';
+}
+
 function renderHealthLog(){
   var noteForm = state.addingNote
     ? ('<div class="card">' +
@@ -1956,6 +2054,7 @@ function renderHealthLog(){
   document.getElementById('screen').innerHTML =
     '<h2 class="title">Health</h2>' +
     '<p class="lede">Everything you have reported, in one place — easy to show your doctor or a family member.</p>' +
+    personalSummaryCardHtml() +
     noteForm +
     '<div style="height:6px;"></div>' +
     (entries || '<div class="card"><p class="med-meta" style="margin:0;">No notes recorded yet.</p></div>') +
