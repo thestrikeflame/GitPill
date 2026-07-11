@@ -429,6 +429,7 @@ var state = {
   expandedInfo: {},
   medInfoLookupBusy: false,
   interactionCheck: { busy: false, results: null, error: null },
+  allergyCheck: { busy: false, risk: null, explanation: null, error: null },
   activeAlert: null,
   firedKeys: {},
   voiceEnabled: true,
@@ -971,6 +972,7 @@ function goView(name){
     state.scanError = null;
     state.scanErrorDetail = null;
     state.cameraSupported = null;
+    state.allergyCheck = { busy: false, risk: null, explanation: null, error: null };
   }
   state.view = name;
   render();
@@ -1174,10 +1176,33 @@ function captureFromVideo(){
   analyzePhoto(dataUrl, 'image/jpeg');
 }
 
+function allergyCheckResultHtml(){
+  var ac = state.allergyCheck;
+  if (ac.error){
+    return '<div class="notice" style="margin-top:8px;">'+escapeHtml(ac.error)+'</div>';
+  }
+  if (!ac.risk) return '';
+  if (ac.risk === 'none'){
+    return '<div class="notif-status granted" style="margin-top:8px;">No known allergy conflict found. '+escapeHtml(ac.explanation || '')+'</div>';
+  }
+  var label = ac.risk === 'high' ? 'Possible allergy conflict' : 'Possible allergy concern';
+  return '<div class="med-warning-banner" style="margin-top:8px;">' +
+    '<div class="med-warning-head">'+warningIconSvg(18)+'<span>'+escapeHtml(label)+'</span></div>' +
+    '<p style="margin:4px 0 0; font-size:0.82rem; color:var(--warn-fg);">'+escapeHtml(ac.explanation || '')+'</p>' +
+  '</div>';
+}
+
 function medInfoSectionHtml(ex){
+  var allergySection = state.allergies
+    ? ('<div style="margin-top:10px;">' +
+        '<button class="btn btn-secondary btn-small" onclick="checkAllergyConflict()"'+(state.allergyCheck.busy?' disabled':'')+'>'+(state.allergyCheck.busy?'Checking…':(state.allergyCheck.risk?'Check again':'Check against my allergies'))+'</button>' +
+        allergyCheckResultHtml() +
+      '</div>')
+    : '<p class="disclaimer" style="margin-top:8px;">Add your known allergies in Settings to check new medications against them.</p>';
   return '<div class="settings-section" style="margin-top:4px;">' +
     '<h3 style="font-size:0.95rem;">About this medication</h3>' +
     '<button class="btn btn-secondary btn-small" onclick="lookupMedInfo()"'+(state.medInfoLookupBusy?' disabled':'')+'>'+(state.medInfoLookupBusy?'Looking up…':'Look up medication info')+'</button>' +
+    allergySection +
     '<label class="field-label">Brand names (aka)</label>' +
     '<input type="text" id="f-brandnames" value="'+escapeAttr((ex.brandNames || []).join(', '))+'" placeholder="Comma-separated, e.g. Tylenol, Panadol">' +
     '<label class="field-label">Category</label>' +
@@ -1725,7 +1750,7 @@ function analyzePhoto(dataUrl, mime){
           { text: prompt }
         ]
       }],
-      generationConfig: { maxOutputTokens: 1000, thinkingConfig: { thinkingBudget: 0 } }
+      generationConfig: { maxOutputTokens: 1000, thinkingConfig: { thinkingBudget: 0 }, responseMimeType: 'application/json' }
     })
   }).then(function(res){
     if (!res.ok){
@@ -1765,6 +1790,7 @@ function analyzePhoto(dataUrl, mime){
     }
     state.view = 'confirm';
     render();
+    if (!state.scanError) checkAllergyConflict(true);
   }).catch(function(err){
     console.error('[analyzePhoto]', err);
     state.scanError = true;
@@ -1819,7 +1845,7 @@ function checkInteractions(){
     'Only include findings that are real, clinically relevant concerns for this specific list. ' +
     'If there are no notable interactions or duplications among these medications, return {"findings":[]}. ' +
     'This is general reference information only, not a substitute for a pharmacist or physician review.';
-  callGemini('', [{ role: 'user', content: prompt }], 700).then(function(text){
+  callGemini('', [{ role: 'user', content: prompt }], 700, true).then(function(text){
     var cleaned = (text || '').replace(/```json|```/g, '').trim();
     var parsed;
     try { parsed = JSON.parse(cleaned); } catch (e) { parsed = null; }
@@ -1867,6 +1893,48 @@ function interactionCheckCardHtml(){
   '</div>';
 }
 
+function checkAllergyConflict(silent){
+  var nameEl = document.getElementById('f-name');
+  var name = nameEl ? nameEl.value.trim() : '';
+  if (!name){
+    if (!silent) alert('Enter the medication name first.');
+    return;
+  }
+  if (!state.apiKey){
+    if (!silent) alert('Add a Google Gemini API key in Settings to check for allergy conflicts.');
+    return;
+  }
+  if (!state.allergies){
+    if (!silent) alert('Add your known allergies in Settings first, then check again.');
+    return;
+  }
+  var categoryEl = document.getElementById('f-category');
+  var category = categoryEl ? categoryEl.value.trim() : (state.extracted && state.extracted.category) || '';
+  state.allergyCheck = { busy: true, risk: null, explanation: null, error: null };
+  render();
+  var prompt = 'A patient has these known allergies: ' + state.allergies + '. ' +
+    'They are about to start taking this medication: ' + name + (category ? (' (' + category + ')') : '') + '. ' +
+    'Consider both direct allergy matches and known cross-reactivity within drug classes (for example, a penicillin ' +
+    'allergy and cross-reactivity with certain cephalosporins). ' +
+    'Respond with ONLY a JSON object, no markdown fences, in exactly this shape: ' +
+    '{"risk":"none|possible|high","explanation":"one short sentence explaining the reasoning"}. ' +
+    'This is general reference information only, not a substitute for a pharmacist or physician review.';
+  callGemini('', [{ role: 'user', content: prompt }], 400, true).then(function(text){
+    var cleaned = (text || '').replace(/```json|```/g, '').trim();
+    var parsed;
+    try { parsed = JSON.parse(cleaned); } catch (e) { parsed = null; }
+    if (!parsed || !parsed.risk){
+      state.allergyCheck = { busy: false, risk: null, explanation: null, error: 'Could not read the response. Please try again.' };
+    } else {
+      state.allergyCheck = { busy: false, risk: parsed.risk, explanation: parsed.explanation || '', error: null };
+    }
+    render();
+  }).catch(function(err){
+    state.allergyCheck = { busy: false, risk: null, explanation: null, error: (err && err.message) || 'Something went wrong.' };
+    render();
+  });
+}
+
 function lookupMedInfo(){
   var nameEl = document.getElementById('f-name');
   var dosageEl = document.getElementById('f-dosage');
@@ -1894,7 +1962,7 @@ function lookupMedInfo(){
     'taking it (such as taking it with water or food, or timing around other medications). warnings should be a ' +
     'short list (1-4 items) of important safety warnings, including alcohol and pregnancy/breastfeeding ' +
     'precautions when relevant. This is for general reference only, not medical advice.';
-  callGemini('', [{ role: 'user', content: prompt }], 500).then(function(text){
+  callGemini('', [{ role: 'user', content: prompt }], 500, true).then(function(text){
     var cleaned = (text || '').replace(/```json|```/g, '').trim();
     var parsed;
     try { parsed = JSON.parse(cleaned); } catch (e) { parsed = null; }
@@ -1911,6 +1979,7 @@ function lookupMedInfo(){
     state.extracted.recommendations = Array.isArray(parsed.recommendations) ? parsed.recommendations : [];
     state.extracted.warnings = Array.isArray(parsed.warnings) ? parsed.warnings : [];
     render();
+    checkAllergyConflict(true);
   }).catch(function(err){
     state.medInfoLookupBusy = false;
     alert('Could not look up medication info: ' + ((err && err.message) || err));
@@ -1918,14 +1987,16 @@ function lookupMedInfo(){
   });
 }
 
-function callGemini(system, messages, maxTokens){
+function callGemini(system, messages, maxTokens, jsonMode){
   if (!state.apiKey){
     return Promise.reject(new Error('No API key set'));
   }
   var contents = messages.map(function(m){
     return { role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] };
   });
-  var body = { contents: contents, generationConfig: { maxOutputTokens: maxTokens || 300, thinkingConfig: { thinkingBudget: 0 } } };
+  var generationConfig = { maxOutputTokens: maxTokens || 300, thinkingConfig: { thinkingBudget: 0 } };
+  if (jsonMode) generationConfig.responseMimeType = 'application/json';
+  var body = { contents: contents, generationConfig: generationConfig };
   if (system) body.systemInstruction = { parts: [{ text: system }] };
   return fetch(GEMINI_ENDPOINT, {
     method: 'POST',
@@ -1989,7 +2060,7 @@ function endCheckin(){
     finishCheckin('none', 'No pain or discomfort reported today.');
     return;
   }
-  callGemini(CHECKIN_SUMMARY_PROMPT, apiMsgs, 200).then(function(text){
+  callGemini(CHECKIN_SUMMARY_PROMPT, apiMsgs, 200, true).then(function(text){
     var cleaned = (text || '').replace(/```json|```/g, '').trim();
     var parsed;
     try { parsed = JSON.parse(cleaned); } catch (e) { parsed = null; }
