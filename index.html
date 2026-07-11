@@ -455,6 +455,50 @@
   .med-warning-head{display:flex; align-items:center; gap:6px; color:var(--warn-fg); font-weight:700; font-size:0.86rem;}
   .med-warning-head svg{flex:none;}
   .med-warning-list{margin:4px 0 0; padding-left:24px; color:var(--warn-fg); font-size:0.82rem; line-height:1.5;}
+
+  /* Welcome / first-run onboarding */
+  .welcome{
+    position:absolute; inset:0; z-index:12;
+    padding:30px 24px 26px; overflow-y:auto;
+    background:linear-gradient(180deg, var(--bg-top), var(--bg-bot));
+  }
+  .welcome::-webkit-scrollbar{width:0;}
+  .welcome::before{
+    content:''; position:absolute; top:-120px; right:-80px; width:300px; height:300px;
+    border-radius:50%; pointer-events:none;
+    background:radial-gradient(circle, color-mix(in srgb, var(--primary-2) 30%, transparent) 0%, transparent 68%);
+  }
+  .welcome-inner{position:relative; z-index:1; display:flex; flex-direction:column; min-height:100%;}
+  .welcome-dots{display:flex; gap:7px; justify-content:center; margin-bottom:22px;}
+  .welcome-dot{width:7px; height:7px; border-radius:50%; background:color-mix(in srgb, var(--primary) 22%, transparent); transition:width 0.2s, background 0.2s;}
+  .welcome-dot.active{width:22px; border-radius:5px; background:var(--accent-grad);}
+  .welcome-mark{
+    width:76px; height:76px; border-radius:24px; margin:8px auto 20px;
+    background:var(--accent-grad); display:flex; align-items:center; justify-content:center;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.4), 0 12px 26px -6px color-mix(in srgb, var(--primary) 55%, transparent);
+  }
+  .welcome-title{font-size:1.7rem; font-weight:700; letter-spacing:-0.4px; text-align:center; margin:0 0 8px; color:var(--text);}
+  .welcome-sub{font-size:0.98rem; color:var(--text-secondary); text-align:center; line-height:1.55; margin:0 auto 24px; max-width:300px;}
+  .welcome-step-title{font-size:1.4rem; font-weight:700; letter-spacing:-0.2px; margin:4px 0 4px; color:var(--text);}
+  .welcome-step-sub{font-size:0.92rem; color:var(--text-secondary); line-height:1.5; margin:0 0 16px;}
+  .welcome-features{
+    background:var(--surface); border:1px solid color-mix(in srgb, var(--border) 55%, #fff);
+    border-radius:var(--r-card); padding:4px 16px; margin-bottom:8px; box-shadow:var(--shadow-md);
+  }
+  .welcome-feature{display:flex; align-items:center; gap:14px; padding:13px 0; border-bottom:1px solid var(--border);}
+  .welcome-feature:last-child{border-bottom:none;}
+  .welcome-feature-icon{
+    width:42px; height:42px; border-radius:13px; flex:none;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--primary-light); color:var(--primary-dark);
+  }
+  .welcome-feature-text{font-size:0.96rem; font-weight:700; color:var(--text);}
+  .welcome-feature-note{font-size:0.8rem; font-weight:400; color:var(--text-secondary); margin-top:1px; line-height:1.35;}
+  .welcome-spacer{flex:1; min-height:20px;}
+  .welcome-actions{display:flex; flex-direction:column; gap:8px; margin-top:20px;}
+  .welcome-nav{display:flex; gap:10px; margin-top:20px;}
+  .welcome-nav .btn{flex:1;}
+  .btn-back{background:var(--chip-bg); color:var(--text-secondary); border:1px solid var(--border);}
 </style>
 </head>
 <body>
@@ -472,6 +516,7 @@
     <div class="screen" id="screen"></div>
     <div class="tabbar" id="tabbar"></div>
     <div id="overlaySlot"></div>
+    <div id="welcomeSlot"></div>
   </div>
   <p class="caption">This is a clickable prototype. The scan screen uses a real photo of a pill bottle and a real AI call to read the label — try it with your camera or a photo from your library.</p>
 </div>
@@ -484,6 +529,14 @@ var PERSONAL_INFO_FIELDS = ['name', 'dob', 'allergies', 'emergencyContactName', 
 
 var state = {
   view: 'home',
+  onboarded: (function(){
+    try {
+      if (localStorage.getItem('medclear_onboarded') === '1') return true;
+      var pi = JSON.parse(localStorage.getItem('medclear_personal_info') || '{}');
+      return !!(pi && pi.name); // existing users with a saved name skip onboarding
+    } catch(e){ return true; }
+  })(),
+  welcomeStep: 0,
   textSize: 'standard',
   meds: [
     { id: 1, name: 'Lisinopril', dosage: '10 mg', instructions: 'Take one tablet by mouth in the morning.', type: 'scheduled', times: ['08:00'], color: 0, pillsTotal: 30, pillsRemaining: 9, expiryDate: '2026-11-15', boxId: 1,
@@ -661,6 +714,17 @@ function loadPersonalInfo(){
   return result;
 }
 
+function persistPersonalInfo(){
+  try {
+    localStorage.setItem('medclear_personal_info', JSON.stringify({
+      name: state.userName, dob: state.dob, allergies: state.allergies,
+      emergencyContactName: state.emergencyContactName, emergencyContactPhone: state.emergencyContactPhone,
+      doctorName: state.doctorName, doctorPhone: state.doctorPhone,
+      pharmacyName: state.pharmacyName, pharmacyPhone: state.pharmacyPhone
+    }));
+  } catch(e){ /* ignore storage errors */ }
+}
+
 function savePersonalInfo(){
   var val = function(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; };
   state.userName = val('f-username');
@@ -672,14 +736,7 @@ function savePersonalInfo(){
   state.doctorPhone = val('f-doctor-phone');
   state.pharmacyName = val('f-pharmacy-name');
   state.pharmacyPhone = val('f-pharmacy-phone');
-  try {
-    localStorage.setItem('medclear_personal_info', JSON.stringify({
-      name: state.userName, dob: state.dob, allergies: state.allergies,
-      emergencyContactName: state.emergencyContactName, emergencyContactPhone: state.emergencyContactPhone,
-      doctorName: state.doctorName, doctorPhone: state.doctorPhone,
-      pharmacyName: state.pharmacyName, pharmacyPhone: state.pharmacyPhone
-    }));
-  } catch(e){ /* ignore storage errors */ }
+  persistPersonalInfo();
   render();
 }
 
@@ -2561,7 +2618,111 @@ function renderHistory(){
     '<p class="disclaimer">Today\'s numbers are real, based on what you\'ve marked as taken in this session. The earlier days here are illustrative, since this demo doesn\'t store data between visits yet.</p>';
 }
 
+function captureWelcomeStep(){
+  var v = function(id){ var el = document.getElementById(id); return el ? el.value.trim() : null; };
+  var name = v('w-name'); if (name !== null) state.userName = name;
+  var allergies = v('w-allergies'); if (allergies !== null) state.allergies = allergies;
+  var ecName = v('w-ec-name'); if (ecName !== null) state.emergencyContactName = ecName;
+  var ecPhone = v('w-ec-phone'); if (ecPhone !== null) state.emergencyContactPhone = ecPhone;
+}
+
+function goWelcomeStep(n){
+  captureWelcomeStep();
+  state.welcomeStep = n;
+  render();
+}
+
+function setWelcomeTextSize(size){
+  captureWelcomeStep();
+  setTextSize(size);
+}
+
+function finishWelcome(){
+  captureWelcomeStep();
+  persistPersonalInfo();
+  try { localStorage.setItem('medclear_onboarded', '1'); } catch(e){ /* ignore */ }
+  state.onboarded = true;
+  state.welcomeStep = 0;
+  state.view = 'home';
+  render();
+}
+
+function skipWelcome(){
+  finishWelcome();
+}
+
+function welcomeFeatureHtml(icon, title, note){
+  return '<div class="welcome-feature">' +
+    '<div class="welcome-feature-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+icon+'</svg></div>' +
+    '<div><div class="welcome-feature-text">'+title+'</div><div class="welcome-feature-note">'+note+'</div></div>' +
+  '</div>';
+}
+
+function renderWelcome(){
+  var slot = document.getElementById('welcomeSlot');
+  if (state.onboarded){ slot.innerHTML = ''; return; }
+  var step = state.welcomeStep || 0;
+  var dots = [0,1,2].map(function(i){
+    return '<div class="welcome-dot'+(i===step?' active':'')+'"></div>';
+  }).join('');
+  var body;
+  if (step === 0){
+    body =
+      '<div class="welcome-mark">'+iconPill(36, '#fff')+'</div>' +
+      '<h1 class="welcome-title">Welcome to GitPill</h1>' +
+      '<p class="welcome-sub">A calmer way to stay on top of your medications — reminders, refills, and a daily check-in, all in one place.</p>' +
+      '<div class="welcome-features">' +
+        welcomeFeatureHtml('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>', 'Timely reminders', 'A gentle nudge for every dose, on schedule.') +
+        welcomeFeatureHtml('<rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/>', 'Scan any label', 'Point your camera and we read the bottle for you.') +
+        welcomeFeatureHtml('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>', 'Keep family in the loop', 'Optional texts if a dose is ever missed.') +
+      '</div>' +
+      '<div class="welcome-spacer"></div>' +
+      '<div class="welcome-actions">' +
+        '<button class="btn btn-primary" onclick="goWelcomeStep(1)">Get started</button>' +
+        '<button class="btn btn-ghost" onclick="skipWelcome()">Skip for now</button>' +
+      '</div>';
+  } else if (step === 1){
+    var sizes = [['small','Small'],['standard','Standard'],['large','Large'],['xl','Extra large']];
+    var sizeChips = sizes.map(function(s){
+      return '<button class="chip '+(state.textSize===s[0]?'selected':'')+'" onclick="setWelcomeTextSize(\''+s[0]+'\')">'+s[1]+'</button>';
+    }).join('');
+    body =
+      '<h2 class="welcome-step-title">First, the basics</h2>' +
+      '<p class="welcome-step-sub">So GitPill can greet you and show text at a size that is comfortable to read.</p>' +
+      '<label class="field-label" style="margin-top:0;">What should we call you?</label>' +
+      '<input type="text" id="w-name" placeholder="e.g. Sam" value="'+escapeAttr(state.userName)+'" autocomplete="given-name">' +
+      '<label class="field-label">Text size — pick what is easiest to read</label>' +
+      '<div class="size-row">'+sizeChips+'</div>' +
+      '<div class="welcome-spacer"></div>' +
+      '<div class="welcome-nav">' +
+        '<button class="btn btn-back" onclick="goWelcomeStep(0)">Back</button>' +
+        '<button class="btn btn-primary" onclick="goWelcomeStep(2)">Continue</button>' +
+      '</div>';
+  } else {
+    body =
+      '<h2 class="welcome-step-title">A little about you</h2>' +
+      '<p class="welcome-step-sub">All optional — you can add or change any of this later in Settings.</p>' +
+      '<label class="field-label" style="margin-top:0;">Known allergies</label>' +
+      '<input type="text" id="w-allergies" placeholder="e.g. Penicillin, Peanuts" value="'+escapeAttr(state.allergies)+'">' +
+      '<label class="field-label">Emergency contact name</label>' +
+      '<input type="text" id="w-ec-name" placeholder="e.g. Jordan (daughter)" value="'+escapeAttr(state.emergencyContactName)+'">' +
+      '<label class="field-label">Emergency contact phone</label>' +
+      '<input type="tel" id="w-ec-phone" placeholder="e.g. (555) 123-4567" value="'+escapeAttr(state.emergencyContactPhone)+'">' +
+      '<div class="welcome-spacer"></div>' +
+      '<div class="welcome-nav">' +
+        '<button class="btn btn-back" onclick="goWelcomeStep(1)">Back</button>' +
+        '<button class="btn btn-primary" onclick="finishWelcome()">Finish setup</button>' +
+      '</div>';
+  }
+  slot.innerHTML =
+    '<div class="welcome"><div class="welcome-inner">' +
+      '<div class="welcome-dots">'+dots+'</div>' +
+      body +
+    '</div></div>';
+}
+
 function render(){
+  renderWelcome();
   renderTabbar();
   if (state.view === 'home') renderHome();
   else if (state.view === 'scan') renderScan();
