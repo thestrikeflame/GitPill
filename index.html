@@ -9,15 +9,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Lexend:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#EAF3FB;
+    --bg:#EDF1F7;
+    --bg-top:#F4F8FD;
+    --bg-bot:#DFECF9;
     --surface:#FFFFFF;
     --primary:#1B5FA8;
+    --primary-2:#3D8BDD;
     --primary-dark:#0E3F73;
     --primary-light:#DCEEFB;
-    --chip-bg:#EAF4FC;
-    --text:#16263B;
-    --text-secondary:#52708A;
-    --border:#D3E6F7;
+    --chip-bg:#E8F2FC;
+    --text:#14243A;
+    --text-secondary:#4F6C87;
+    --border:#D6E5F4;
     --warn-bg:#FBEFD9;
     --warn-fg:#8A5A0B;
     --good-bg:#E1F3EA;
@@ -31,9 +34,14 @@
     --sp-5:20px;
     --sp-6:24px;
     --sp-7:32px;
-    --shadow-sm:0 1px 2px rgba(14,38,59,0.05), 0 1px 1px rgba(14,38,59,0.04);
-    --shadow-md:0 1px 2px rgba(14,38,59,0.06), 0 8px 20px rgba(14,63,115,0.08);
-    --shadow-lg:0 2px 4px rgba(14,38,59,0.07), 0 24px 48px rgba(14,63,115,0.14);
+    --r-card:24px;
+    --r-inner:14px;
+    --accent-grad:linear-gradient(140deg, var(--primary-2), var(--primary));
+    --glass:rgba(255,255,255,0.66);
+    --glass-border:rgba(255,255,255,0.78);
+    --shadow-sm:0 1px 2px rgba(15,35,60,0.05), 0 2px 8px rgba(15,35,60,0.05);
+    --shadow-md:0 2px 4px rgba(15,35,60,0.05), 0 10px 28px -6px rgba(20,50,90,0.12);
+    --shadow-lg:0 4px 10px rgba(10,30,55,0.07), 0 32px 64px -16px rgba(15,45,85,0.28);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -50,6 +58,7 @@
     padding:var(--sp-7) var(--sp-3) var(--sp-7);
     min-height:100vh;
   }
+  :focus-visible{outline:2.5px solid var(--primary); outline-offset:2px; border-radius:6px;}
   .page{display:flex; flex-direction:column; align-items:center; gap:var(--sp-4); width:100%; max-width:420px;}
   .caption{
     font-size:13px; color:var(--text-secondary); text-align:center; max-width:360px; line-height:1.5;
@@ -58,120 +67,188 @@
     position:relative;
     width:390px;
     max-width:94vw;
-    background:var(--surface);
-    border-radius:34px;
-    border:1px solid var(--border);
+    /* Re-declared so the gradient resolves against the theme vars applyTheme() sets on this element */
+    --accent-grad:linear-gradient(140deg, var(--primary-2), var(--primary));
+    background:linear-gradient(180deg, var(--bg-top), var(--bg-bot));
+    border-radius:40px;
+    border:1px solid rgba(255,255,255,0.85);
     box-shadow:var(--shadow-lg);
     overflow:hidden;
     display:flex;
     flex-direction:column;
     height:760px;
   }
+  .phone::before, .phone::after{
+    content:''; position:absolute; border-radius:50%; pointer-events:none; z-index:0;
+  }
+  .phone::before{
+    top:-110px; right:-90px; width:320px; height:320px;
+    background:radial-gradient(circle, color-mix(in srgb, var(--primary-2) 24%, transparent) 0%, transparent 68%);
+  }
+  .phone::after{
+    bottom:-130px; left:-110px; width:360px; height:360px;
+    background:radial-gradient(circle, color-mix(in srgb, var(--primary) 16%, transparent) 0%, transparent 68%);
+  }
   .statusbar{
-    background:var(--primary);
-    color:#fff;
-    padding:var(--sp-4) var(--sp-6) var(--sp-4);
+    position:relative; z-index:2;
+    background:linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.5));
+    border-bottom:1px solid rgba(255,255,255,0.9);
+    color:var(--text);
+    padding:14px 22px 12px;
     display:flex;
     align-items:center;
     gap:var(--sp-3);
   }
   .statusbar .logo{
-    width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,0.18);
+    width:36px;height:36px;border-radius:12px;background:var(--accent-grad);
     display:flex;align-items:center;justify-content:center;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.4), 0 3px 8px -2px color-mix(in srgb, var(--primary) 50%, transparent);
   }
-  .statusbar h1{font-size:1.05rem; margin:0; font-weight:700; letter-spacing:0.2px;}
-  .statusbar .sub{font-size:0.72rem; opacity:0.85; margin:0;}
+  .statusbar h1{font-size:1.06rem; margin:0; font-weight:700; letter-spacing:0.2px; color:var(--text);}
+  .statusbar .sub{font-size:0.72rem; color:var(--text-secondary); margin:0;}
   .screen{
     flex:1;
     overflow-y:auto;
-    padding:var(--sp-4) var(--sp-4) var(--sp-3);
-    background:var(--bg);
+    padding:var(--sp-5) var(--sp-4) 104px;
+    background:transparent;
     position:relative;
+    z-index:1;
   }
   .screen::-webkit-scrollbar{width:0;}
   .tabbar{
+    position:absolute; left:14px; right:14px; bottom:14px; z-index:6;
     display:flex;
-    border-top:1px solid var(--border);
-    background:var(--surface);
+    align-items:stretch;
+    background:var(--glass);
+    -webkit-backdrop-filter:blur(24px) saturate(1.4);
+    backdrop-filter:blur(24px) saturate(1.4);
+    border:1px solid var(--glass-border);
+    border-radius:30px;
+    padding:6px 8px;
+    box-shadow:0 2px 6px rgba(15,40,70,0.08), 0 16px 32px -8px rgba(15,45,85,0.22), inset 0 1px 0 rgba(255,255,255,0.8);
+  }
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    .tabbar{ background:rgba(255,255,255,0.94); }
   }
   .tabbtn{
     flex:1;
     border:none;
     background:none;
-    padding:12px 4px 14px;
+    padding:8px 2px 7px;
+    border-radius:22px;
     display:flex;
     flex-direction:column;
     align-items:center;
-    gap:4px;
+    gap:3px;
     color:var(--text-secondary);
     font-family:inherit;
-    font-size:0.74rem;
+    font-size:0.68rem;
     font-weight:700;
     cursor:pointer;
+    transition:background 0.15s, color 0.15s;
   }
-  .tabbtn.active{color:var(--primary);}
-  .tabbtn svg{width:24px;height:24px;}
-  h2.title{font-size:1.32rem; margin:var(--sp-1) 0 var(--sp-1); font-weight:700; color:var(--text);}
+  .tabbtn.active{color:var(--primary); background:color-mix(in srgb, var(--primary) 10%, transparent);}
+  .tabbtn svg{width:23px;height:23px;}
+  .tab-scan{
+    flex:none; align-self:center;
+    width:54px; height:54px; border-radius:50%;
+    margin:-30px 6px 2px;
+    border:none; cursor:pointer;
+    background:var(--accent-grad);
+    color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 3px 8px rgba(10,35,65,0.18), 0 10px 22px -4px color-mix(in srgb, var(--primary) 55%, transparent), inset 0 1px 0 rgba(255,255,255,0.35);
+    transition:transform 0.12s, filter 0.15s;
+  }
+  .tab-scan:active{transform:scale(0.95); filter:brightness(0.96);}
+  .tab-scan svg{width:24px;height:24px;}
+  .home-eyebrow{font-size:0.7rem; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:var(--text-secondary); margin:2px 0 4px;}
+  .hero{font-size:1.6rem; font-weight:700; letter-spacing:-0.3px; margin:0 0 2px; color:var(--text);}
+  h2.title{font-size:1.42rem; margin:2px 0 4px; font-weight:700; letter-spacing:-0.2px; color:var(--text);}
   p.lede{font-size:0.92rem; color:var(--text-secondary); margin:0 0 var(--sp-5); line-height:1.5;}
   .card{
     background:var(--surface);
-    border:1px solid var(--border);
-    border-radius:18px;
-    padding:var(--sp-3);
+    border:1px solid color-mix(in srgb, var(--border) 55%, #fff);
+    border-radius:var(--r-card);
+    padding:var(--sp-4);
     margin-bottom:var(--sp-3);
-    box-shadow:var(--shadow-sm);
+    box-shadow:var(--shadow-md);
   }
-  .med-row{display:flex; align-items:flex-start; gap:var(--sp-3);}
+  .med-row{display:flex; align-items:flex-start; gap:var(--sp-4);}
   .pill-icon{
     width:46px;height:46px;border-radius:23px;flex:none;
     display:flex;align-items:center;justify-content:center;
     font-weight:700; font-size:1rem;
+    position:relative; margin:6px;
   }
+  .pill-ring{position:absolute; top:-6px; left:-6px; pointer-events:none;}
   .med-name{font-size:1.08rem; font-weight:700; margin:0 0 2px;}
   .med-brand{font-size:0.78em; font-weight:400; color:var(--text-secondary);}
   .med-meta{font-size:0.86rem; color:var(--text-secondary); margin:0;}
   .badge{
     display:inline-block; font-size:0.74rem; font-weight:700; padding:3px 10px;
-    border-radius:20px; margin-top:7px;
+    border-radius:999px; margin-top:7px;
   }
   .badge.due{background:var(--warn-bg); color:var(--warn-fg);}
   .badge.taken{background:var(--good-bg); color:var(--good-fg);}
   .badge.upcoming{background:var(--chip-bg); color:var(--primary-dark);}
-  .row-actions{margin-top:var(--sp-2); display:flex; flex-wrap:wrap; gap:var(--sp-2); align-items:center;}
+  .row-actions{margin-top:var(--sp-3); display:flex; flex-wrap:wrap; gap:var(--sp-2); align-items:center;}
   .btn{
-    border:none; border-radius:26px; font-family:inherit; cursor:pointer;
+    border:none; border-radius:999px; font-family:inherit; cursor:pointer;
     font-weight:700; font-size:0.95rem; padding:var(--sp-3) var(--sp-5);
     display:inline-flex; align-items:center; justify-content:center; gap:var(--sp-2);
+    transition:transform 0.12s, filter 0.15s, box-shadow 0.15s;
   }
-  .btn-primary{background:var(--primary); color:#fff; width:100%; box-shadow:0 1px 2px rgba(14,63,115,0.15), 0 4px 10px rgba(14,63,115,0.16);}
-  .btn-primary:active{background:var(--primary-dark);}
-  .btn-secondary{background:var(--chip-bg); color:var(--primary-dark); width:100%;}
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{
+    background:var(--accent-grad); color:#fff; width:100%;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.32), 0 2px 4px rgba(10,30,60,0.1), 0 10px 20px -6px color-mix(in srgb, var(--primary) 45%, transparent);
+  }
+  .btn-primary:active{filter:brightness(0.95);}
+  .btn-secondary{background:var(--chip-bg); color:var(--primary-dark); width:100%; border:1px solid color-mix(in srgb, var(--primary) 14%, transparent);}
+  .btn-secondary:active{filter:brightness(0.97);}
   .btn-small{padding:9px 16px; font-size:0.85rem; width:auto;}
   .btn-ghost{background:none; color:var(--primary); padding:8px 4px; width:100%; text-decoration:underline;}
-  .fab-wrap{position:sticky; bottom:0; padding-top:var(--sp-2); background:linear-gradient(to top, var(--bg) 60%, rgba(234,243,251,0));}
+  .fab-wrap{
+    position:sticky; bottom:86px; z-index:3;
+    padding:7px; margin-top:var(--sp-2);
+    background:var(--glass);
+    -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px);
+    border:1px solid var(--glass-border); border-radius:999px;
+    box-shadow:var(--shadow-sm);
+  }
   .field-label{font-size:0.86rem; font-weight:700; color:var(--text); display:block; margin:var(--sp-4) 0 var(--sp-2);}
-  input[type="text"], textarea{
-    width:100%; border:1px solid var(--border); border-radius:12px;
+  input[type="text"], input[type="password"], input[type="tel"], input[type="date"], input[type="time"], textarea{
+    width:100%; border:1.5px solid var(--border); border-radius:var(--r-inner);
     padding:12px 13px; font-family:inherit; font-size:0.98rem; color:var(--text);
     background:var(--surface);
+    transition:border-color 0.15s, box-shadow 0.15s;
+  }
+  input:focus, textarea:focus, select:focus{
+    outline:none; border-color:var(--primary);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent);
   }
   textarea{resize:vertical; min-height:64px;}
   .chip-row{display:flex; flex-wrap:wrap; gap:var(--sp-2); margin-top:var(--sp-2);}
   .chip{
     border:1.5px solid var(--border); background:var(--surface); color:var(--text);
-    border-radius:20px; padding:9px 15px; font-family:inherit; font-size:0.86rem;
+    border-radius:999px; padding:9px 15px; font-family:inherit; font-size:0.86rem;
     font-weight:700; cursor:pointer;
+    transition:background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
   }
-  .chip.selected{background:var(--primary); border-color:var(--primary); color:#fff;}
+  .chip.selected{
+    background:var(--accent-grad); border-color:transparent; color:#fff;
+    box-shadow:0 4px 10px -3px color-mix(in srgb, var(--primary) 45%, transparent);
+  }
   .chip.removable{background:var(--chip-bg); border-color:var(--chip-bg); color:var(--primary-dark); display:flex; gap:6px; align-items:center;}
   .photo-frame{
-    width:100%; aspect-ratio:4/3; border-radius:16px; background:var(--chip-bg);
+    width:100%; aspect-ratio:4/3; border-radius:18px; background:var(--chip-bg);
     display:flex; align-items:center; justify-content:center; overflow:hidden;
     border:1.5px dashed var(--border); margin-bottom:16px;
   }
   .photo-frame img{width:100%; height:100%; object-fit:cover;}
   .notice{
-    background:var(--warn-bg); color:var(--warn-fg); border-radius:12px; padding:11px 13px;
+    background:var(--warn-bg); color:var(--warn-fg); border-radius:var(--r-inner); padding:11px 13px;
     font-size:0.84rem; margin-bottom:14px; line-height:1.4;
   }
   .spin{
@@ -185,41 +262,27 @@
   .size-row{display:flex; flex-wrap:wrap; gap:var(--sp-2);}
   .toggle-row{display:flex; align-items:center; justify-content:space-between; padding:var(--sp-3) 0; border-bottom:1px solid var(--border);}
   .toggle-row:last-child{border-bottom:none;}
-  .switch{width:44px; height:26px; border-radius:14px; background:var(--border); position:relative; cursor:pointer; flex:none;}
-  .switch.on{background:var(--primary);}
-  .switch .knob{position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:left 0.15s;}
+  .switch{width:46px; height:28px; border-radius:14px; background:var(--border); position:relative; cursor:pointer; flex:none; transition:background 0.15s;}
+  .switch.on{background:var(--accent-grad);}
+  .switch .knob{position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; transition:left 0.15s; box-shadow:0 1px 3px rgba(10,30,60,0.25);}
   .switch.on .knob{left:21px;}
-  .overlay{
-    position:absolute; inset:0; background:rgba(14,38,59,0.45);
-    display:flex; align-items:center; justify-content:center; padding:24px; z-index:10;
-  }
-  .alert-card{
-    background:var(--surface); border-radius:22px; padding:26px 22px; text-align:center; width:100%;
-  }
-  .alert-pill{
-    width:64px;height:64px;border-radius:32px; background:var(--primary-light); color:var(--primary-dark);
-    display:flex; align-items:center; justify-content:center; margin:0 auto 14px;
-  }
-  .eyebrow{font-size:0.8rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.6px; margin:0 0 6px;}
-  .alert-name{font-size:1.3rem; font-weight:700; margin:0 0 4px;}
-  .alert-meta{font-size:0.95rem; color:var(--text-secondary); margin:0 0 20px;}
-  .alert-card .btn{margin-bottom:10px;}
-  .checkin-banner{
-    background:var(--primary-light); border:1px solid var(--border); border-radius:18px;
-    padding:14px 15px; margin-bottom:14px; display:flex; gap:12px; align-items:flex-start;
-  }
-  .checkin-banner .pill-icon{background:var(--surface);}
   .disclaimer{font-size:0.76rem; color:var(--text-secondary); line-height:1.5; margin-top:6px;}
   .chat-area{display:flex; flex-direction:column; gap:var(--sp-2); margin-bottom:var(--sp-4);}
   .bubble-row{display:flex;}
   .bubble-row.user{justify-content:flex-end;}
   .bubble{
-    max-width:80%; padding:var(--sp-2) var(--sp-4); border-radius:16px; font-size:0.94rem; line-height:1.45;
+    max-width:80%; padding:var(--sp-2) var(--sp-4); border-radius:18px; font-size:0.94rem; line-height:1.45;
     box-shadow:var(--shadow-sm);
   }
-  .bubble.assistant{background:var(--surface); border:1px solid var(--border); border-bottom-left-radius:4px;}
-  .bubble.user{background:var(--primary); color:#fff; border-bottom-right-radius:4px; box-shadow:none;}
-  .chat-input-row{display:flex; gap:var(--sp-2); align-items:flex-end; position:sticky; bottom:0; background:var(--bg); padding-top:var(--sp-1);}
+  .bubble.assistant{background:var(--surface); border:1px solid color-mix(in srgb, var(--border) 55%, #fff); border-bottom-left-radius:6px;}
+  .bubble.user{background:var(--accent-grad); color:#fff; border-bottom-right-radius:6px; box-shadow:none;}
+  .chat-input-row{
+    display:flex; gap:var(--sp-2); align-items:flex-end; position:sticky; bottom:86px; z-index:3;
+    background:var(--glass);
+    -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px);
+    border:1px solid var(--glass-border); border-radius:22px;
+    padding:8px; box-shadow:var(--shadow-sm);
+  }
   .chat-input-row textarea{flex:1; min-height:46px; max-height:90px;}
   .mic-btn{
     flex:none; width:46px; height:46px; border-radius:23px; border:none; cursor:pointer;
@@ -231,7 +294,7 @@
   .severity-none, .severity-mild{background:var(--good-bg); color:var(--good-fg);}
   .severity-moderate, .severity-severe{background:var(--warn-bg); color:var(--warn-fg);}
   select{
-    width:100%; border:1px solid var(--border); border-radius:12px;
+    width:100%; border:1.5px solid var(--border); border-radius:var(--r-inner);
     padding:12px 13px; font-family:inherit; font-size:0.98rem; color:var(--text); background:var(--surface);
   }
   .source-tag{font-size:0.72rem; color:var(--text-secondary); margin-top:2px;}
@@ -278,49 +341,78 @@
 
   /* Alarm-style reminder */
   .alarm-overlay{
-    position:absolute; inset:0; background:linear-gradient(160deg, var(--primary-dark), #0a1f33);
-    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; z-index:10; color:#fff;
+    position:absolute; inset:0; z-index:10; color:#fff;
+    background:
+      radial-gradient(120% 90% at 85% -10%, color-mix(in srgb, var(--primary-2) 55%, transparent), transparent 55%),
+      radial-gradient(100% 80% at -10% 110%, color-mix(in srgb, var(--primary) 45%, transparent), transparent 60%),
+      linear-gradient(165deg, var(--primary-dark) 0%, #0A1626 95%);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:26px;
   }
-  .alarm-status{font-size:0.74rem; opacity:0.8; margin-bottom:18px; text-align:center;}
-  .alarm-time{font-size:2.6rem; font-weight:700; letter-spacing:1px; margin:0 0 6px;}
+  .alarm-status{font-size:0.74rem; opacity:0.85; margin-bottom:16px; text-align:center;}
+  .alarm-card{
+    width:100%;
+    background:rgba(255,255,255,0.1);
+    border:1px solid rgba(255,255,255,0.24);
+    border-radius:28px;
+    padding:26px 22px 20px;
+    text-align:center;
+    -webkit-backdrop-filter:blur(20px) saturate(1.3);
+    backdrop-filter:blur(20px) saturate(1.3);
+    box-shadow:0 24px 48px -12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.28);
+  }
+  .alarm-pill{
+    width:60px; height:60px; border-radius:30px; margin:0 auto 14px;
+    background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.26);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .alarm-time{font-size:2.7rem; font-weight:700; letter-spacing:0.5px; margin:0 0 2px;}
   .alarm-name{font-size:1.25rem; font-weight:700; margin:0 0 4px; text-align:center;}
-  .alarm-meta{font-size:0.95rem; opacity:0.85; margin:0 0 34px; text-align:center;}
+  .alarm-meta{font-size:0.95rem; opacity:0.85; margin:0 0 24px; text-align:center;}
   .alarm-take{
-    width:100%; max-width:280px; background:#fff; color:var(--primary-dark); border:none; border-radius:30px;
-    padding:16px; font-family:inherit; font-weight:700; font-size:1.02rem; cursor:pointer; margin-bottom:12px;
+    width:100%; background:#fff; color:var(--primary-dark); border:none; border-radius:999px;
+    padding:16px; font-family:inherit; font-weight:700; font-size:1.02rem; cursor:pointer; margin-bottom:10px;
+    box-shadow:0 6px 16px -4px rgba(0,0,0,0.35);
+    transition:transform 0.12s, filter 0.15s;
   }
+  .alarm-take:active{transform:translateY(1px); filter:brightness(0.95);}
   .alarm-delay{
-    width:100%; max-width:280px; background:rgba(255,255,255,0.14); color:#fff; border:none; border-radius:30px;
-    padding:16px; font-family:inherit; font-weight:700; font-size:1.02rem; cursor:pointer;
+    width:100%; background:rgba(255,255,255,0.15); color:#fff; border:1px solid rgba(255,255,255,0.28); border-radius:999px;
+    padding:15px; font-family:inherit; font-weight:700; font-size:1.02rem; cursor:pointer;
+    transition:transform 0.12s, background 0.15s;
   }
+  .alarm-delay:active{transform:translateY(1px); background:rgba(255,255,255,0.22);}
 
   /* Theme swatches */
   .swatch-row{display:flex; gap:14px; margin-top:6px;}
   .swatch{
     width:42px; height:42px; border-radius:21px; cursor:pointer; border:3px solid transparent;
     display:flex; align-items:center; justify-content:center;
+    box-shadow:inset 0 2px 4px rgba(255,255,255,0.35), 0 3px 8px -2px rgba(15,40,70,0.3);
+    transition:transform 0.12s;
   }
+  .swatch:active{transform:scale(0.94);}
   .swatch.active{border-color:var(--text);}
 
   /* Font picker */
   .font-option{
     display:flex; align-items:center; justify-content:space-between; width:100%;
-    border:1.5px solid var(--border); border-radius:14px; padding:var(--sp-3) var(--sp-4);
+    border:1.5px solid var(--border); border-radius:16px; padding:var(--sp-3) var(--sp-4);
     margin-bottom:var(--sp-2); background:var(--surface); cursor:pointer; text-align:left;
+    transition:border-color 0.15s, background 0.15s;
   }
   .font-option.selected{border-color:var(--primary); background:var(--primary-light);}
   .font-option-name{font-size:1.02rem; font-weight:700; margin:0;}
   .font-option-note{font-size:0.78rem; color:var(--text-secondary); margin:2px 0 0;}
   .font-option-check{flex:none; margin-left:var(--sp-3); color:var(--primary);}
   .notif-status{
-    font-size:0.82rem; padding:10px 12px; border-radius:12px; margin-bottom:10px; line-height:1.4;
+    font-size:0.82rem; padding:10px 12px; border-radius:var(--r-inner); margin-bottom:10px; line-height:1.4;
   }
   .notif-status.granted{background:var(--good-bg); color:var(--good-fg);}
   .notif-status.pending{background:var(--chip-bg); color:var(--primary-dark);}
   .notif-status.blocked{background:var(--warn-bg); color:var(--warn-fg);}
 
   /* Time grouping + history */
-  .time-header{font-size:0.85rem; font-weight:700; color:var(--text-secondary); margin:16px 0 8px;}
+  .time-header{font-size:0.72rem; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-secondary); margin:18px 2px 8px;}
   .time-header:first-child{margin-top:0;}
   .history-row{display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border);}
   .history-row:last-child{border-bottom:none;}
@@ -328,26 +420,20 @@
   .history-frac{font-size:0.85rem; color:var(--text-secondary);}
 
   /* Pill meter */
-  .pill-meter-wrap{margin-top:10px;}
-  .pill-meter-toprow{display:flex; align-items:center; gap:7px; margin-bottom:5px;}
-  .pill-meter-cute{flex:none; display:flex; align-items:center;}
-  .pill-meter-track{flex:1; height:9px; border-radius:6px; background:var(--chip-bg); overflow:hidden;}
-  .pill-meter-fill{height:100%; border-radius:6px; background:var(--primary); transition:width 0.25s;}
-  .pill-meter-fill.low{background:#D9534F;}
-  .pill-meter-label{font-size:0.78rem; color:var(--text-secondary); margin:0; display:flex; align-items:center; flex-wrap:wrap; gap:6px;}
+  .pill-meter-label{font-size:0.78rem; color:var(--text-secondary); margin:8px 0 0; display:flex; align-items:center; flex-wrap:wrap; gap:6px;}
   .badge.refill{background:#FBE3E1; color:#A23B35;}
   .badge.expired{background:#EDEFF2; color:#5C6774;}
   .expired-card{opacity:0.6; filter:grayscale(0.9);}
-  .expiry-note{font-size:0.78rem; color:#8A3C1E; background:#FBEFD9; border-radius:10px; padding:8px 10px; margin-top:9px; line-height:1.4;}
+  .expiry-note{font-size:0.78rem; color:#8A3C1E; background:#FBEFD9; border-radius:var(--r-inner); padding:8px 10px; margin-top:9px; line-height:1.4;}
   .expiry-line{font-size:0.78rem; color:var(--text-secondary); margin:4px 0 0;}
-  .dispenser-log{background:#0F1B24; border-radius:12px; padding:10px 12px; margin-top:6px; max-height:200px; overflow-y:auto;}
+  .dispenser-log{background:#0F1B24; border-radius:var(--r-inner); padding:10px 12px; margin-top:6px; max-height:200px; overflow-y:auto;}
   .dispenser-log-row{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:0.76rem; color:#B9E4D0; padding:3px 0; line-height:1.4; border-bottom:1px solid rgba(255,255,255,0.06);}
   .dispenser-log-row:last-child{border-bottom:none;}
   .dispenser-log-time{color:#7C93A6;}
 
   /* Medication info (description / category / conditions) */
   .med-info-toggle{margin-top:6px; font-size:0.82rem; text-decoration:underline; color:var(--primary); background:none; border:none; cursor:pointer; padding:4px 0; font-family:inherit; font-weight:700;}
-  .med-info-body{background:var(--chip-bg); border-radius:12px; padding:10px 12px; margin-top:4px;}
+  .med-info-body{background:var(--chip-bg); border-radius:var(--r-inner); padding:10px 12px; margin-top:4px;}
   .med-info-category{display:inline-block; font-size:0.74rem; font-weight:700; color:var(--primary-dark); background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:3px 10px; margin:0 0 7px;}
   .med-info-desc{font-size:0.85rem; color:var(--text); margin:0 0 7px; line-height:1.45;}
   .med-info-conditions{font-size:0.82rem; color:var(--text-secondary); margin:7px 0 0; line-height:1.45;}
@@ -355,7 +441,7 @@
   .med-info-recommend-list{font-size:0.82rem; color:var(--text-secondary); margin:2px 0 0; padding-left:20px; line-height:1.5;}
 
   /* Always-visible medication warnings banner */
-  .med-warning-banner{background:var(--warn-bg); border:1px solid #EED9A6; border-radius:12px; padding:10px 12px; margin-top:var(--sp-2);}
+  .med-warning-banner{background:var(--warn-bg); border:1px solid #EED9A6; border-radius:var(--r-inner); padding:10px 12px; margin-top:var(--sp-2);}
   .med-warning-head{display:flex; align-items:center; gap:6px; color:var(--warn-fg); font-weight:700; font-size:0.86rem;}
   .med-warning-head svg{flex:none;}
   .med-warning-list{margin:4px 0 0; padding-left:24px; color:var(--warn-fg); font-size:0.82rem; line-height:1.5;}
@@ -552,22 +638,32 @@ function clearPersonalInfo(){
 
 var THEMES = {
   blue: {
-    '--bg':'#EAF3FB', '--surface':'#FFFFFF', '--primary':'#1B5FA8', '--primary-dark':'#0E3F73',
-    '--primary-light':'#DCEEFB', '--chip-bg':'#EAF4FC', '--text':'#16263B', '--text-secondary':'#52708A',
-    '--border':'#D3E6F7', '--warn-bg':'#FBEFD9', '--warn-fg':'#8A5A0B', '--good-bg':'#E1F3EA', '--good-fg':'#1F6B49',
+    '--bg-top':'#F4F8FD', '--bg-bot':'#DFECF9', '--surface':'#FFFFFF',
+    '--primary':'#1B5FA8', '--primary-2':'#3D8BDD', '--primary-dark':'#0E3F73',
+    '--primary-light':'#DCEEFB', '--chip-bg':'#E8F2FC', '--text':'#14243A', '--text-secondary':'#4F6C87',
+    '--border':'#D6E5F4', '--warn-bg':'#FBEFD9', '--warn-fg':'#8A5A0B', '--good-bg':'#E1F3EA', '--good-fg':'#1F6B49',
     swatch:'#1B5FA8', label:'Ocean Blue'
   },
   teal: {
-    '--bg':'#E9F6F3', '--surface':'#FFFFFF', '--primary':'#147D6F', '--primary-dark':'#0B4A41',
-    '--primary-light':'#D7EFE9', '--chip-bg':'#E4F4F0', '--text':'#16302B', '--text-secondary':'#54756D',
-    '--border':'#CFE7DF', '--warn-bg':'#FBEFD9', '--warn-fg':'#8A5A0B', '--good-bg':'#E1F3EA', '--good-fg':'#1F6B49',
-    swatch:'#147D6F', label:'Seafoam Teal'
+    '--bg-top':'#F1FAF7', '--bg-bot':'#DEF0EA', '--surface':'#FFFFFF',
+    '--primary':'#0F7E6E', '--primary-2':'#2BAF97', '--primary-dark':'#085248',
+    '--primary-light':'#D7F0EA', '--chip-bg':'#E3F5F0', '--text':'#12302B', '--text-secondary':'#4E7169',
+    '--border':'#CFE6DF', '--warn-bg':'#FBEFD9', '--warn-fg':'#8A5A0B', '--good-bg':'#E1F3EA', '--good-fg':'#1F6B49',
+    swatch:'#0F7E6E', label:'Seafoam Teal'
+  },
+  violet: {
+    '--bg-top':'#F6F4FD', '--bg-bot':'#E8E3F8', '--surface':'#FFFFFF',
+    '--primary':'#5B3EC8', '--primary-2':'#8B6BF0', '--primary-dark':'#3A2687',
+    '--primary-light':'#EAE4FB', '--chip-bg':'#EFEAFC', '--text':'#1E1834', '--text-secondary':'#5E5680',
+    '--border':'#DFD8F2', '--warn-bg':'#FBEFD9', '--warn-fg':'#8A5A0B', '--good-bg':'#E1F3EA', '--good-fg':'#1F6B49',
+    swatch:'#5B3EC8', label:'Twilight Violet'
   },
   blush: {
-    '--bg':'#FBEEF1', '--surface':'#FFFFFF', '--primary':'#BD4F77', '--primary-dark':'#7E3252',
-    '--primary-light':'#F7DDE6', '--chip-bg':'#FAE7ED', '--text':'#3B1C26', '--text-secondary':'#8A5F6B',
-    '--border':'#F0D2DA', '--warn-bg':'#FBEFD9', '--warn-fg':'#8A5A0B', '--good-bg':'#E1F3EA', '--good-fg':'#1F6B49',
-    swatch:'#BD4F77', label:'Soft Blush'
+    '--bg-top':'#FCF4F7', '--bg-bot':'#F5E2EA', '--surface':'#FFFFFF',
+    '--primary':'#B84A72', '--primary-2':'#DE7BA0', '--primary-dark':'#7E3252',
+    '--primary-light':'#F7DDE6', '--chip-bg':'#FAE9EF', '--text':'#351B26', '--text-secondary':'#83606C',
+    '--border':'#EFD5DD', '--warn-bg':'#FBEFD9', '--warn-fg':'#8A5A0B', '--good-bg':'#E1F3EA', '--good-fg':'#1F6B49',
+    swatch:'#B84A72', label:'Soft Blush'
   }
 };
 
@@ -819,21 +915,34 @@ function iconPill(size, color){
   return '<svg viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="'+color+'" stroke-width="2"><rect x="3" y="8" width="18" height="9" rx="4.5"/><path d="M9 8v9" stroke="'+color+'" stroke-width="2"/></svg>';
 }
 
-function iconCutePill(size, color, expired){
-  var h = Math.round(size * 0.55);
-  var eyes = expired
-    ? '<path d="M23.5 7 L26 9.6 M26 7 L23.5 9.6" stroke="'+color+'" stroke-width="1.3" stroke-linecap="round"/>' +
-      '<path d="M29 7 L31.5 9.6 M31.5 7 L29 9.6" stroke="'+color+'" stroke-width="1.3" stroke-linecap="round"/>'
-    : '<circle cx="25.5" cy="8.5" r="1.3" fill="'+color+'"/><circle cx="30.5" cy="8.5" r="1.3" fill="'+color+'"/>';
-  var mouth = expired
-    ? '<path d="M24.5 14.5 H31.5" stroke="'+color+'" stroke-width="1.5" stroke-linecap="round"/>'
-    : '<path d="M24.5 13.5 Q28 17 31.5 13.5" stroke="'+color+'" stroke-width="1.5" fill="none" stroke-linecap="round"/>';
-  return '<svg viewBox="0 0 40 22" width="'+size+'" height="'+h+'" xmlns="http://www.w3.org/2000/svg">' +
-    '<rect x="1" y="1" width="38" height="20" rx="10" fill="#fff" stroke="'+color+'" stroke-width="2"/>' +
-    '<path d="M20,1 L11,1 A10,10 0 0 0 1,11 A10,10 0 0 0 11,21 L20,21 Z" fill="'+color+'"/>' +
-    '<path d="M20 2 L20 20" stroke="'+color+'" stroke-width="1.5"/>' +
-    eyes + mouth +
-  '</svg>';
+function pillFraction(med){
+  var total = med.pillsTotal || 0;
+  if (total <= 0) return null;
+  var remaining = (typeof med.pillsRemaining === 'number') ? med.pillsRemaining : total;
+  if (remaining < 0) remaining = 0;
+  var pct = Math.max(0, Math.min(100, Math.round((remaining / total) * 100)));
+  var low = !isExpired(med) && (remaining <= 5 || remaining <= Math.ceil(total * 0.2));
+  return { total: total, remaining: remaining, pct: pct, low: low };
+}
+
+function medIconHtml(med){
+  var c = MED_COLORS[med.color % MED_COLORS.length];
+  var expired = isExpired(med);
+  var fg = expired ? '#8A97A6' : c.fg;
+  var bg = expired ? '#EDEFF2' : c.bg;
+  var ring = '';
+  var frac = pillFraction(med);
+  if (frac){
+    var r = 26, circ = 2 * Math.PI * r;
+    var ringColor = expired ? '#B7C0CA' : (frac.low ? '#D9534F' : fg);
+    ring = '<svg class="pill-ring" viewBox="0 0 58 58" width="58" height="58" aria-hidden="true">' +
+      '<circle cx="29" cy="29" r="'+r+'" fill="none" stroke="rgba(20,40,60,0.1)" stroke-width="3.5"/>' +
+      '<circle cx="29" cy="29" r="'+r+'" fill="none" stroke="'+ringColor+'" stroke-width="3.5" stroke-linecap="round"' +
+        ' stroke-dasharray="'+circ.toFixed(2)+'" stroke-dashoffset="'+(circ * (1 - frac.pct / 100)).toFixed(2)+'"' +
+        ' transform="rotate(-90 29 29)"/>' +
+    '</svg>';
+  }
+  return '<div class="pill-icon" style="background:'+bg+';color:'+fg+';">'+iconPill(22, fg)+ring+'</div>';
 }
 
 function isExpired(med){
@@ -851,31 +960,17 @@ function expiryLabel(dateStr){
 }
 
 function pillMeterHtml(med){
-  var total = med.pillsTotal || 0;
-  if (total <= 0) return '';
-  var remaining = (typeof med.pillsRemaining === 'number') ? med.pillsRemaining : total;
-  if (remaining < 0) remaining = 0;
-  var expired = isExpired(med);
-  var pct = Math.max(0, Math.min(100, Math.round((remaining / total) * 100)));
-  var low = !expired && (remaining <= 5 || remaining <= Math.ceil(total * 0.2));
+  var frac = pillFraction(med);
+  if (!frac) return '';
   var dailyUsage = (med.type === 'prn') ? null : (med.times && med.times.length ? med.times.length : 1);
-  var daysLeft = (dailyUsage && dailyUsage > 0) ? Math.floor(remaining / dailyUsage) : null;
+  var daysLeft = (dailyUsage && dailyUsage > 0) ? Math.floor(frac.remaining / dailyUsage) : null;
 
-  var label = remaining + ' of ' + total + ' pills left';
+  var label = frac.remaining + ' of ' + frac.total + ' pills left';
   if (daysLeft !== null){
     label += ' · about ' + daysLeft + (daysLeft === 1 ? ' day' : ' days') + ' left';
   }
-  var lowBadge = low ? '<span class="badge refill">Refill soon</span>' : '';
-  var c = MED_COLORS[med.color % MED_COLORS.length];
-  var iconColor = expired ? '#8A97A6' : c.fg;
-
-  return '<div class="pill-meter-wrap">' +
-    '<div class="pill-meter-toprow">' +
-      '<span class="pill-meter-cute">'+iconCutePill(30, iconColor, expired)+'</span>' +
-      '<div class="pill-meter-track"><div class="pill-meter-fill'+(low?' low':'')+'" style="width:'+pct+'%;"></div></div>' +
-    '</div>' +
-    '<p class="pill-meter-label">'+label+lowBadge+'</p>' +
-  '</div>';
+  var lowBadge = frac.low ? '<span class="badge refill" style="margin-top:0;">Refill soon</span>' : '';
+  return '<p class="pill-meter-label">'+label+lowBadge+'</p>';
 }
 
 function toggleMedInfo(medId){
@@ -966,26 +1061,33 @@ function logPrnDose(medId){
 }
 
 function renderTabbar(){
+  var bar = document.getElementById('tabbar');
+  if (state.view === 'scan'){
+    bar.style.display = 'none';
+    return;
+  }
+  bar.style.display = 'flex';
   var tabs = [
     { id:'home', label:'Home', icon:'<path d="M4 12l8-7 8 7"/><path d="M6 11v8a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-8"/><path d="M10 20v-5h4v5"/>' },
-    { id:'scan', label:'Scan', icon:'<rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/>' },
     { id:'history', label:'History', icon:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>' },
     { id:'health', label:'Health', icon:'<path d="M20.8 8.6c0-2.5-2-4.4-4.4-4.4-1.6 0-3 .8-3.8 2.1-.8-1.3-2.2-2.1-3.8-2.1-2.4 0-4.4 2-4.4 4.4 0 5 8.2 10.4 8.2 10.4s8.2-5.4 8.2-10.4z"/>' },
     { id:'settings', label:'Settings', icon:'<g transform="translate(12 12) scale(0.8) translate(-12 -12)"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82A1.65 1.65 0 0 0 3 13.09H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></g>' }
   ];
-  var html = tabs.map(function(t){
-    var homeViews = ['home','checkin','checkin-result'];
-    var settingsViews = ['settings'];
-    var active = (t.id === 'home' && homeViews.indexOf(state.view) !== -1) ||
-      (t.id === 'scan' && ['scan','analyzing','confirm'].indexOf(state.view) !== -1) ||
+  var tabHtml = function(t){
+    var active = (t.id === 'home' && ['home','checkin','checkin-result'].indexOf(state.view) !== -1) ||
       (t.id === 'history' && state.view === 'history') ||
       (t.id === 'health' && state.view === 'healthlog') ||
-      (t.id === 'settings' && settingsViews.indexOf(state.view) !== -1);
+      (t.id === 'settings' && state.view === 'settings');
     return '<button class="tabbtn '+(active?'active':'')+'" onclick="goView(\''+t.id+'\')">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+t.icon+'</svg>' +
       '<span>'+t.label+'</span></button>';
-  }).join('');
-  document.getElementById('tabbar').innerHTML = html;
+  };
+  var scanBtn = '<button class="tab-scan" onclick="goView(\'scan\')" aria-label="Scan a new medication">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<rect x="3" y="6" width="18" height="14" rx="3"/><circle cx="12" cy="13" r="3.5"/><path d="M9 6l1.2-2h3.6L15 6"/>' +
+    '</svg></button>';
+  document.getElementById('tabbar').innerHTML =
+    tabHtml(tabs[0]) + tabHtml(tabs[1]) + scanBtn + tabHtml(tabs[2]) + tabHtml(tabs[3]);
 }
 
 function goView(name){
@@ -1026,15 +1128,13 @@ function renderHome(){
       var expired = isExpired(e.med);
       var badgeClass = expired ? 'expired' : (isTaken ? 'taken' : (isDue ? 'due' : 'upcoming'));
       var badgeText = expired ? 'Expired' : (isTaken ? ('Taken at ' + formatTime(state.takenLog[key])) : (isDue ? 'Due now' : 'Upcoming'));
-      var iconColor = expired ? '#8A97A6' : c.fg;
-      var iconBg = expired ? '#EDEFF2' : c.bg;
       var actionOrNote = expired
         ? '<p class="expiry-note">This prescription expired '+escapeHtml(expiryLabel(e.med.expiryDate))+'. Please don\'t take it — check with your pharmacist about disposal and a refill.</p>'
         : (isTaken ? '' : '<div class="row-actions"><button class="btn btn-secondary btn-small" onclick="markTaken('+e.med.id+',\''+e.time+'\')">Mark as taken</button>' +
             boxButtonHtml(e.med) +
           '</div>');
       return '<div class="card'+(expired?' expired-card':'')+'"><div class="med-row">' +
-        '<div class="pill-icon" style="background:'+iconBg+';color:'+iconColor+';">'+iconPill(22, iconColor)+'</div>' +
+        medIconHtml(e.med) +
         '<div style="flex:1;">' +
           '<p class="med-name">'+escapeHtml(e.med.name)+brandNameHtml(e.med)+'</p>' +
           '<p class="med-meta">'+escapeHtml(e.med.dosage)+'</p>' +
@@ -1051,7 +1151,7 @@ function renderHome(){
   }).join('');
 
   if (entries.length === 0){
-    rows = '<div class="card center-pad"><p class="lede" style="margin:0;">No scheduled medications yet. Scan one to get started.</p></div>';
+    rows = '<div class="card center-pad"><p class="lede" style="margin:0;">No scheduled medications yet. Tap the camera button below to scan one.</p></div>';
   }
 
   var doneToday = !!state.checkinLog[today];
@@ -1086,15 +1186,13 @@ function renderHome(){
         ? (doses.length + ' of ' + med.prnMax + ' doses today · last at ' + lastDose)
         : ('0 of ' + med.prnMax + ' doses today');
       var expired = isExpired(med);
-      var iconColor = expired ? '#8A97A6' : c.fg;
-      var iconBg = expired ? '#EDEFF2' : c.bg;
       var actionOrNote = expired
         ? '<p class="expiry-note">This medication expired '+escapeHtml(expiryLabel(med.expiryDate))+'. Please don\'t take it — check with your pharmacist about disposal and a refill.</p>'
         : '<div class="row-actions"><button class="btn btn-secondary btn-small" onclick="logPrnDose('+med.id+')">Log a dose now</button>' +
             boxButtonHtml(med) +
           '</div>';
       return '<div class="card'+(expired?' expired-card':'')+'"><div class="med-row">' +
-        '<div class="pill-icon" style="background:'+iconBg+';color:'+iconColor+';">'+iconPill(22,iconColor)+'</div>' +
+        medIconHtml(med) +
         '<div style="flex:1;">' +
           '<p class="med-name">'+escapeHtml(med.name)+brandNameHtml(med)+'</p>' +
           '<p class="med-meta">'+escapeHtml(med.dosage)+' · '+escapeHtml(med.instructions)+'</p>' +
@@ -1109,13 +1207,13 @@ function renderHome(){
   }
 
   document.getElementById('screen').innerHTML =
-    '<h2 class="title">'+greeting()+'</h2>' +
+    '<p class="home-eyebrow">'+escapeHtml(new Date().toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' }))+'</p>' +
+    '<h2 class="hero">'+greeting()+'</h2>' +
     '<p class="lede">Here is your schedule for today.</p>' +
     checkinCard +
     interactionCheckCardHtml() +
     rows +
-    prnHtml +
-    '<div class="fab-wrap"><button class="btn btn-primary" onclick="goView(\'scan\')">+ Scan a new medication</button></div>';
+    prnHtml;
 }
 
 function renderScan(){
@@ -1174,10 +1272,11 @@ function startCamera(){
   navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function(stream){
     mediaStream = stream;
     state.cameraSupported = true;
-    renderScan();
+    if (state.view === 'scan') renderScan();
+    else stopCamera();
   }).catch(function(){
     state.cameraSupported = false;
-    renderScan();
+    if (state.view === 'scan') renderScan();
   });
 }
 function stopCamera(){
@@ -1279,7 +1378,7 @@ function renderConfirm(){
     : ('<label class="field-label">When should we remind you?</label>' +
        '<div class="chip-row">'+chipRow+customChips+'</div>' +
        '<div style="margin-top:12px; display:flex; gap:8px; align-items:center;">' +
-         '<input type="time" id="f-customtime" style="flex:1; border:1px solid var(--border); border-radius:12px; padding:10px; font-family:inherit; font-size:0.95rem;">' +
+         '<input type="time" id="f-customtime" style="flex:1; width:auto;">' +
          '<button class="btn btn-secondary btn-small" onclick="addCustomTime()">Add time</button>' +
        '</div>');
 
@@ -1501,11 +1600,14 @@ function renderOverlay(){
     slot.innerHTML =
       '<div class="alarm-overlay">' +
         '<div class="notif-status '+statusClass+'" style="background:rgba(255,255,255,0.14); color:#fff;">'+statusText+'</div>' +
-        '<p class="alarm-time">'+formatTime(a.time)+'</p>' +
-        '<p class="alarm-name">'+escapeHtml(a.med.name)+'</p>' +
-        '<p class="alarm-meta">'+escapeHtml(a.med.dosage)+'</p>' +
-        '<button class="alarm-take" onclick="resolveAlert(true)">Take</button>' +
-        '<button class="alarm-delay" onclick="resolveAlert(false)">Delay 10 minutes</button>' +
+        '<div class="alarm-card">' +
+          '<div class="alarm-pill">'+iconPill(28, '#fff')+'</div>' +
+          '<p class="alarm-time">'+formatTime(a.time)+'</p>' +
+          '<p class="alarm-name">'+escapeHtml(a.med.name)+'</p>' +
+          '<p class="alarm-meta">'+escapeHtml(a.med.dosage)+'</p>' +
+          '<button class="alarm-take" onclick="resolveAlert(true)">Take</button>' +
+          '<button class="alarm-delay" onclick="resolveAlert(false)">Delay 10 minutes</button>' +
+        '</div>' +
       '</div>';
     return;
   }
@@ -2170,7 +2272,7 @@ function renderCheckinResult(){
         ? (doses.length + ' of ' + med.prnMax + ' doses today · last at ' + lastDose)
         : ('0 of ' + med.prnMax + ' doses today');
       return '<div class="card"><div class="med-row">' +
-        '<div class="pill-icon" style="background:'+c.bg+';color:'+c.fg+';">'+iconPill(22,c.fg)+'</div>' +
+        medIconHtml(med) +
         '<div style="flex:1;">' +
           '<p class="med-name">'+escapeHtml(med.name)+brandNameHtml(med)+'</p>' +
           '<p class="med-meta">'+escapeHtml(med.dosage)+' · '+escapeHtml(med.instructions)+'</p>' +
