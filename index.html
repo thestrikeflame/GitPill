@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MedClear — medication reminders</title>
+<title>GitPill — medication reminders</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Lexend:wght@400;700&display=swap" rel="stylesheet">
@@ -369,7 +369,7 @@
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="8" width="18" height="9" rx="4.5"/><path d="M9 8v9" stroke="#fff" stroke-width="2"/></svg>
       </div>
       <div>
-        <h1>MedClear</h1>
+        <h1>GitPill</h1>
         <p class="sub">Your medication companion</p>
       </div>
     </div>
@@ -1553,7 +1553,7 @@ function toggleVoice(){
   render();
 }
 function sendCheckinNotification(){
-  var sent = fireNotification('MedClear', "Daily check-in: how are you feeling today?", function(){
+  var sent = fireNotification('GitPill', "Daily check-in: how are you feeling today?", function(){
     openCheckin(false);
   });
   if (!sent){
@@ -1623,7 +1623,7 @@ function sendTestReminder(){
   var med = state.meds.filter(function(m){ return m.type !== 'prn'; })[0];
   if (!med) return;
   var time = med.times[0];
-  var sent = fireNotification('MedClear', med.name + ' ' + med.dosage + ' is due now.', function(){
+  var sent = fireNotification('GitPill', med.name + ' ' + med.dosage + ' is due now.', function(){
     state.activeAlert = { med: med, time: time, real: true };
     render();
   });
@@ -1655,7 +1655,7 @@ function checkReminders(){
       if (t === now && !state.firedKeys[fireKey] && !state.takenLog[takenKey]){
         state.firedKeys[fireKey] = true;
         (function(med, t){
-          var sent = fireNotification('MedClear', med.name + ' ' + med.dosage + ' is due now.', function(){
+          var sent = fireNotification('GitPill', med.name + ' ' + med.dosage + ' is due now.', function(){
             state.activeAlert = { med: med, time: t, real: true };
             render();
           });
