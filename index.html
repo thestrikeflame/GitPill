@@ -115,6 +115,7 @@
     font-weight:700; font-size:1rem;
   }
   .med-name{font-size:1.08rem; font-weight:700; margin:0 0 2px;}
+  .med-brand{font-size:0.78em; font-weight:400; color:var(--text-secondary);}
   .med-meta{font-size:0.86rem; color:var(--text-secondary); margin:0;}
   .badge{
     display:inline-block; font-size:0.74rem; font-weight:700; padding:3px 10px;
@@ -359,24 +360,28 @@ var state = {
   textSize: 'standard',
   meds: [
     { id: 1, name: 'Lisinopril', dosage: '10 mg', instructions: 'Take one tablet by mouth in the morning.', type: 'scheduled', times: ['08:00'], color: 0, pillsTotal: 30, pillsRemaining: 9, expiryDate: '2026-11-15', boxId: 1,
+      brandNames: ['Prinivil', 'Zestril'],
       category: 'ACE inhibitor (blood pressure medication)',
       description: 'Lisinopril relaxes and widens blood vessels, making it easier for the heart to pump blood.',
       conditions: ['High blood pressure (hypertension)', 'Heart failure', 'Protecting the kidneys in diabetes'],
       recommendations: ['Take at the same time each day', 'Can be taken with or without food', 'Stand up slowly from sitting or lying down'],
       warnings: ['Do not take if pregnant or planning pregnancy — can cause serious harm to a developing baby', 'May cause dizziness or lightheadedness', 'Avoid salt substitutes containing potassium unless your doctor says it is okay'] },
     { id: 2, name: 'Metformin', dosage: '500 mg', instructions: 'Take one tablet twice a day with food.', type: 'scheduled', times: ['08:00', '18:00'], color: 1, pillsTotal: 60, pillsRemaining: 6, expiryDate: '2026-08-20', boxId: 2,
+      brandNames: ['Glucophage'],
       category: 'Biguanide (diabetes medication)',
       description: 'Metformin lowers blood sugar by reducing how much glucose the liver releases and helping the body respond better to insulin.',
       conditions: ['Type 2 diabetes'],
       recommendations: ['Take with food to reduce stomach upset', 'Drink plenty of water'],
       warnings: ['Avoid excessive alcohol — raises the risk of a rare but serious condition called lactic acidosis', 'Tell your doctor before any procedure using contrast dye or before surgery'] },
     { id: 3, name: 'Vitamin D3', dosage: '1000 IU', instructions: 'Take one capsule daily in the morning.', type: 'scheduled', times: ['08:00'], color: 2, pillsTotal: 90, pillsRemaining: 52, expiryDate: '2027-02-01', boxId: 3,
+      brandNames: [],
       category: 'Vitamin / dietary supplement',
       description: 'Vitamin D3 helps the body absorb calcium and supports bone, muscle, and immune health.',
       conditions: ['Vitamin D deficiency', 'Bone health support'],
       recommendations: ['Take with a meal containing some fat for better absorption'],
       warnings: ['Avoid very high doses without medical supervision — can lead to excess calcium in the blood'] },
     { id: 4, name: 'Acetaminophen', dosage: '500 mg', instructions: 'Take 1-2 tablets every 6 hours as needed for pain. Do not take more than 4 doses in 24 hours.', type: 'prn', prnMax: 4, times: [], color: 3, pillsTotal: 24, pillsRemaining: 18, expiryDate: '2026-06-01', boxId: 4,
+      brandNames: ['Tylenol', 'Panadol'],
       category: 'Analgesic / antipyretic (pain reliever)',
       description: 'Acetaminophen relieves mild to moderate pain and helps reduce fever.',
       conditions: ['Pain relief', 'Fever reduction'],
@@ -737,6 +742,11 @@ function medInfoListHtml(items, cssClass, label){
   return '<p class="'+cssClass+'" style="margin-bottom:0;">'+label+'</p><ul class="'+cssClass+'-list">'+lis+'</ul>';
 }
 
+function brandNameHtml(med){
+  if (!med.brandNames || !med.brandNames.length) return '';
+  return ' <span class="med-brand">('+escapeHtml(med.brandNames.join(', '))+')</span>';
+}
+
 function medInfoHtml(med){
   var hasInfo = med.category || med.description || (med.conditions && med.conditions.length) ||
     (med.recommendations && med.recommendations.length) || (med.warnings && med.warnings.length);
@@ -857,7 +867,7 @@ function renderHome(){
       return '<div class="card'+(expired?' expired-card':'')+'"><div class="med-row">' +
         '<div class="pill-icon" style="background:'+iconBg+';color:'+iconColor+';">'+iconPill(22, iconColor)+'</div>' +
         '<div style="flex:1;">' +
-          '<p class="med-name">'+escapeHtml(e.med.name)+'</p>' +
+          '<p class="med-name">'+escapeHtml(e.med.name)+brandNameHtml(e.med)+'</p>' +
           '<p class="med-meta">'+escapeHtml(e.med.dosage)+'</p>' +
           '<span class="badge '+badgeClass+'">'+badgeText+'</span>' +
           pillMeterHtml(e.med) +
@@ -916,7 +926,7 @@ function renderHome(){
       return '<div class="card'+(expired?' expired-card':'')+'"><div class="med-row">' +
         '<div class="pill-icon" style="background:'+iconBg+';color:'+iconColor+';">'+iconPill(22,iconColor)+'</div>' +
         '<div style="flex:1;">' +
-          '<p class="med-name">'+escapeHtml(med.name)+'</p>' +
+          '<p class="med-name">'+escapeHtml(med.name)+brandNameHtml(med)+'</p>' +
           '<p class="med-meta">'+escapeHtml(med.dosage)+' · '+escapeHtml(med.instructions)+'</p>' +
           '<p class="med-meta" style="margin-top:4px;">'+(expired ? 'Expired' : statusText)+'</p>' +
           pillMeterHtml(med) +
@@ -1025,6 +1035,8 @@ function medInfoSectionHtml(ex){
   return '<div class="settings-section" style="margin-top:4px;">' +
     '<h3 style="font-size:0.95rem;">About this medication</h3>' +
     '<button class="btn btn-secondary btn-small" onclick="lookupMedInfo()"'+(state.medInfoLookupBusy?' disabled':'')+'>'+(state.medInfoLookupBusy?'Looking up…':'Look up medication info')+'</button>' +
+    '<label class="field-label">Brand names (aka)</label>' +
+    '<input type="text" id="f-brandnames" value="'+escapeAttr((ex.brandNames || []).join(', '))+'" placeholder="Comma-separated, e.g. Tylenol, Panadol">' +
     '<label class="field-label">Category</label>' +
     '<input type="text" id="f-category" value="'+escapeAttr(ex.category || '')+'" placeholder="e.g. ACE inhibitor">' +
     '<label class="field-label">What it\'s for</label>' +
@@ -1376,6 +1388,8 @@ function saveMedication(){
     med.expiryDate = expiryEl.value;
   }
   med.boxId = state.extracted.boxId || null;
+  var brandNamesEl = document.getElementById('f-brandnames');
+  med.brandNames = brandNamesEl ? brandNamesEl.value.split(',').map(function(s){ return s.trim(); }).filter(Boolean) : [];
   var categoryEl = document.getElementById('f-category');
   var descriptionEl = document.getElementById('f-description');
   var conditionsEl = document.getElementById('f-conditions');
@@ -1463,7 +1477,7 @@ function handleSelectedFile(file){
     return analyzePhoto(dataUrl, state.photoMime);
   }).catch(function(){
     state.scanError = true;
-    state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null, category:'', description:'', conditions:[], recommendations:[], warnings:[] };
+    state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null, brandNames:[], category:'', description:'', conditions:[], recommendations:[], warnings:[] };
     state.view = 'confirm';
     render();
   });
@@ -1481,7 +1495,7 @@ document.getElementById('galleryInput').addEventListener('change', function(e){
 function analyzePhoto(dataUrl, mime){
   if (!state.apiKey){
     state.scanError = 'nokey';
-    state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null, category:'', description:'', conditions:[], recommendations:[], warnings:[] };
+    state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null, brandNames:[], category:'', description:'', conditions:[], recommendations:[], warnings:[] };
     state.view = 'confirm';
     render();
     return Promise.resolve();
@@ -1490,21 +1504,26 @@ function analyzePhoto(dataUrl, mime){
   var prompt = 'You are looking at a photo of a medication bottle, box, or blister pack. ' +
     'Identify the medication name, the strength or dosage printed on the label, and the dosing ' +
     'instructions (such as how many times a day and any timing notes). Also identify general reference ' +
-    'information about this medication: its drug category/class, a short plain-language description of ' +
-    'what it does, the conditions it is commonly used to treat, general recommendations for taking it ' +
-    'safely (such as taking it with water or food, or timing around other medications), and important ' +
-    'warnings (such as interactions with alcohol, pregnancy/breastfeeding precautions, or things not to ' +
-    'combine it with). ' +
+    'information about this medication: well-known consumer brand names it is sold under (so a layperson ' +
+    'can recognize it — for example if the label shows the generic name "Acetaminophen", list brand names ' +
+    'like "Tylenol", "Panadol"; if the label already shows a brand name, this can be empty), its drug ' +
+    'category/class, a short plain-language description of what it does, the conditions it is commonly used ' +
+    'to treat, general recommendations for taking it safely (such as taking it with water or food, or timing ' +
+    'around other medications), and important warnings (such as interactions with alcohol, pregnancy/' +
+    'breastfeeding precautions, or things not to combine it with). ' +
     'Respond with ONLY a JSON object and nothing else, no markdown fences, in exactly this shape: ' +
     '{"name":"...","dosage":"...","instructions":"...","suggestedTimes":["08:00","20:00"],' +
-    '"category":"...","description":"...","conditions":["...","..."],"recommendations":["...","..."],"warnings":["...","..."]}. ' +
+    '"brandNames":["...","..."],"category":"...","description":"...","conditions":["...","..."],' +
+    '"recommendations":["...","..."],"warnings":["...","..."]}. ' +
     'suggestedTimes should be 24-hour HH:MM strings reflecting how many times a day the label says to take it, ' +
-    'spaced sensibly through waking hours. category should be a short drug class label (e.g. "ACE inhibitor"). ' +
-    'description should be 1-2 plain-language sentences. conditions should be a short list (1-4 items) of ' +
-    'conditions or symptoms it is commonly used to treat. recommendations should be a short list (1-3 items) of ' +
-    'practical tips for taking it. warnings should be a short list (1-4 items) of important safety warnings, ' +
-    'including alcohol and pregnancy/breastfeeding precautions when relevant. If a field is not clearly legible, ' +
-    'make your best reasonable guess; if you cannot identify the medication at all, leave these fields empty.';
+    'spaced sensibly through waking hours. brandNames should be a short list (0-3 items) of common brand names, ' +
+    'omitting any that are identical to the printed name. category should be a short drug class label (e.g. ' +
+    '"ACE inhibitor"). description should be 1-2 plain-language sentences. conditions should be a short list ' +
+    '(1-4 items) of conditions or symptoms it is commonly used to treat. recommendations should be a short list ' +
+    '(1-3 items) of practical tips for taking it. warnings should be a short list (1-4 items) of important ' +
+    'safety warnings, including alcohol and pregnancy/breastfeeding precautions when relevant. If a field is not ' +
+    'clearly legible, make your best reasonable guess; if you cannot identify the medication at all, leave these ' +
+    'fields empty.';
 
   return fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -1536,7 +1555,7 @@ function analyzePhoto(dataUrl, mime){
     try { parsed = JSON.parse(cleaned); } catch (err) { parsed = null; }
     if (!parsed || !parsed.name){
       state.scanError = true;
-      state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null, category:'', description:'', conditions:[], recommendations:[], warnings:[] };
+      state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null, brandNames:[], category:'', description:'', conditions:[], recommendations:[], warnings:[] };
     } else {
       state.scanError = false;
       state.extracted = {
@@ -1549,6 +1568,7 @@ function analyzePhoto(dataUrl, mime){
         pillsTotal: '',
         expiryDate: '',
         boxId: null,
+        brandNames: Array.isArray(parsed.brandNames) ? parsed.brandNames : [],
         category: parsed.category || '',
         description: parsed.description || '',
         conditions: Array.isArray(parsed.conditions) ? parsed.conditions : [],
@@ -1562,7 +1582,7 @@ function analyzePhoto(dataUrl, mime){
     console.error('[analyzePhoto]', err);
     state.scanError = true;
     state.scanErrorDetail = (err && err.message) || String(err);
-    state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null, category:'', description:'', conditions:[], recommendations:[], warnings:[] };
+    state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null, brandNames:[], category:'', description:'', conditions:[], recommendations:[], warnings:[] };
     state.view = 'confirm';
     render();
   });
@@ -1604,7 +1624,10 @@ function lookupMedInfo(){
   render();
   var prompt = 'Provide general reference information about the following medication: ' + name + (dosage ? (' ' + dosage) : '') + '. ' +
     'Respond with ONLY a JSON object, no markdown fences, in exactly this shape: ' +
-    '{"category":"...","description":"...","conditions":["...","..."],"recommendations":["...","..."],"warnings":["...","..."]}. ' +
+    '{"brandNames":["...","..."],"category":"...","description":"...","conditions":["...","..."],"recommendations":["...","..."],"warnings":["...","..."]}. ' +
+    'brandNames should be a short list (0-3 items) of well-known consumer brand names this medication is sold ' +
+    'under, so a layperson can recognize it (for example "Tylenol", "Panadol" for acetaminophen) — omit any ' +
+    'identical to the name given above, and leave empty if the name given is already a brand name. ' +
     'category should be a short drug class label (e.g. "ACE inhibitor"). description should be 1-2 plain-language ' +
     'sentences explaining what it does. conditions should be a short list (1-4 items) of conditions or symptoms ' +
     'it is commonly used to treat. recommendations should be a short list (1-3 items) of practical tips for ' +
@@ -1621,6 +1644,7 @@ function lookupMedInfo(){
       render();
       return;
     }
+    state.extracted.brandNames = Array.isArray(parsed.brandNames) ? parsed.brandNames : [];
     state.extracted.category = parsed.category || '';
     state.extracted.description = parsed.description || '';
     state.extracted.conditions = Array.isArray(parsed.conditions) ? parsed.conditions : [];
@@ -1764,7 +1788,7 @@ function renderCheckinResult(){
       return '<div class="card"><div class="med-row">' +
         '<div class="pill-icon" style="background:'+c.bg+';color:'+c.fg+';">'+iconPill(22,c.fg)+'</div>' +
         '<div style="flex:1;">' +
-          '<p class="med-name">'+escapeHtml(med.name)+'</p>' +
+          '<p class="med-name">'+escapeHtml(med.name)+brandNameHtml(med)+'</p>' +
           '<p class="med-meta">'+escapeHtml(med.dosage)+' · '+escapeHtml(med.instructions)+'</p>' +
           '<p class="med-meta" style="margin-top:4px;">'+statusText+'</p>' +
           '<p class="disclaimer">This is based on the instructions saved for this medication — it is your call whether to take it now.</p>' +
