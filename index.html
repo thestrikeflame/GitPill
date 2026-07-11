@@ -1709,6 +1709,12 @@ function sendCheckinMessage(){
   var text = box ? box.value.trim() : '';
   if (!text || state.checkin.busy) return;
   state.checkin.messages.push({ role: 'user', text: text });
+  if (!state.apiKey){
+    state.checkin.messages.push({ role: 'assistant', text: "I can't reply yet — no Anthropic API key is set. Add one in Settings, or tap \"End check-in\" below to finish without the chat." });
+    if (box) box.value = '';
+    render();
+    return;
+  }
   state.checkin.busy = true;
   render();
   callClaude(CHECKIN_SYSTEM_PROMPT, getApiMessages(), 300).then(function(text){
@@ -1717,8 +1723,8 @@ function sendCheckinMessage(){
     state.checkin.busy = false;
     render();
     speakText(reply);
-  }).catch(function(){
-    state.checkin.messages.push({ role: 'assistant', text: "Sorry, I had trouble connecting just now. You can try again, or finish the check-in below." });
+  }).catch(function(err){
+    state.checkin.messages.push({ role: 'assistant', text: "Sorry, I had trouble connecting just now (" + ((err && err.message) || 'unknown error') + "). You can try again, or finish the check-in below." });
     state.checkin.busy = false;
     render();
   });
@@ -1770,9 +1776,11 @@ function renderCheckin(){
     ? ('<button class="mic-btn '+(state.listening?'listening':'')+'" onclick="toggleListening()" aria-label="Speak your answer">' +
        '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0"/><path d="M12 18v3"/></svg></button>')
     : '';
+  var noKeyNotice = state.apiKey ? '' : '<div class="notice">No Anthropic API key is set, so the check-in chat can\'t reply yet. Add one in Settings to enable it.</div>';
   document.getElementById('screen').innerHTML =
     '<h2 class="title">Daily check-in</h2>' +
     '<p class="disclaimer">This is a supportive check-in, not medical care. If this is an emergency, call 911 or your local emergency number.</p>' +
+    noKeyNotice +
     '<div class="chat-area" style="margin-top:14px;">'+bubbles+(state.checkin.busy ? '<div class="bubble-row assistant"><div class="bubble assistant">…</div></div>' : '')+'</div>' +
     '<div class="chat-input-row">' +
       micButton +
