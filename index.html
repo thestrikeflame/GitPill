@@ -6,7 +6,7 @@
 <title>MedClear — medication reminders</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Lexend:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#EAF3FB;
@@ -23,6 +23,7 @@
     --good-bg:#E1F3EA;
     --good-fg:#1F6B49;
     --scale:1;
+    --font-family:'Atkinson Hyperlegible', Arial, sans-serif;
     --sp-1:4px;
     --sp-2:8px;
     --sp-3:12px;
@@ -36,11 +37,12 @@
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
-  html{ font-size:calc(16px * var(--scale)); }
+  html{ font-size:calc(15px * var(--scale)); }
+  html[data-size="small"]{ --scale:0.9; }
   html[data-size="large"]{ --scale:1.18; }
   html[data-size="xl"]{ --scale:1.36; }
   body{
-    font-family:'Atkinson Hyperlegible', Arial, sans-serif;
+    font-family:var(--font-family);
     background:var(--bg);
     color:var(--text);
     display:flex;
@@ -82,7 +84,7 @@
   .screen{
     flex:1;
     overflow-y:auto;
-    padding:var(--sp-5) var(--sp-5) var(--sp-4);
+    padding:var(--sp-4) var(--sp-4) var(--sp-3);
     background:var(--bg);
     position:relative;
   }
@@ -115,8 +117,8 @@
     background:var(--surface);
     border:1px solid var(--border);
     border-radius:18px;
-    padding:var(--sp-4);
-    margin-bottom:var(--sp-4);
+    padding:var(--sp-3);
+    margin-bottom:var(--sp-3);
     box-shadow:var(--shadow-sm);
   }
   .med-row{display:flex; align-items:flex-start; gap:var(--sp-3);}
@@ -180,7 +182,7 @@
   .center-pad{padding:var(--sp-7) var(--sp-3); text-align:center;}
   .settings-section{margin-bottom:var(--sp-6);}
   .settings-section h3{font-size:0.95rem; margin:0 0 var(--sp-3);}
-  .size-row{display:flex; gap:var(--sp-2);}
+  .size-row{display:flex; flex-wrap:wrap; gap:var(--sp-2);}
   .toggle-row{display:flex; align-items:center; justify-content:space-between; padding:var(--sp-3) 0; border-bottom:1px solid var(--border);}
   .toggle-row:last-child{border-bottom:none;}
   .switch{width:44px; height:26px; border-radius:14px; background:var(--border); position:relative; cursor:pointer; flex:none;}
@@ -299,6 +301,17 @@
     display:flex; align-items:center; justify-content:center;
   }
   .swatch.active{border-color:var(--text);}
+
+  /* Font picker */
+  .font-option{
+    display:flex; align-items:center; justify-content:space-between; width:100%;
+    border:1.5px solid var(--border); border-radius:14px; padding:var(--sp-3) var(--sp-4);
+    margin-bottom:var(--sp-2); background:var(--surface); cursor:pointer; text-align:left;
+  }
+  .font-option.selected{border-color:var(--primary); background:var(--primary-light);}
+  .font-option-name{font-size:1.02rem; font-weight:700; margin:0;}
+  .font-option-note{font-size:0.78rem; color:var(--text-secondary); margin:2px 0 0;}
+  .font-option-check{flex:none; margin-left:var(--sp-3); color:var(--primary);}
   .notif-status{
     font-size:0.82rem; padding:10px 12px; border-radius:12px; margin-bottom:10px; line-height:1.4;
   }
@@ -422,6 +435,7 @@ var state = {
   addingNote: false,
   listening: false,
   theme: 'blue',
+  fontFamily: 'atkinson',
   notifPermission: ('Notification' in window) ? Notification.permission : 'unsupported',
   cameraSupported: null,
   apiKey: (function(){ try { return localStorage.getItem('medclear_api_key') || ''; } catch(e){ return ''; } })(),
@@ -485,6 +499,41 @@ var THEMES = {
     swatch:'#BD4F77', label:'Soft Blush'
   }
 };
+
+var FONT_OPTIONS = {
+  atkinson: {
+    label: 'Atkinson Hyperlegible',
+    stack: "'Atkinson Hyperlegible', Arial, sans-serif",
+    note: 'Designed for low-vision readers — distinct letterforms (default)'
+  },
+  lexend: {
+    label: 'Lexend',
+    stack: "'Lexend', Arial, sans-serif",
+    note: 'Designed to improve reading proficiency and speed'
+  },
+  helvetica: {
+    label: 'Helvetica',
+    stack: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif",
+    note: 'Classic, clean system sans-serif'
+  },
+  verdana: {
+    label: 'Verdana',
+    stack: "Verdana, Tahoma, Geneva, sans-serif",
+    note: 'Wide letter spacing, built for screen legibility'
+  },
+  arial: {
+    label: 'Arial',
+    stack: "Arial, Helvetica, sans-serif",
+    note: 'Familiar, universal fallback'
+  }
+};
+
+function applyFont(id){
+  if (!FONT_OPTIONS[id]) return;
+  state.fontFamily = id;
+  document.documentElement.style.setProperty('--font-family', FONT_OPTIONS[id].stack);
+  render();
+}
 
 function logDispenserActivity(line){
   var d = state.dispenser;
@@ -1161,6 +1210,16 @@ function renderSettings(){
       '<button class="btn btn-secondary" onclick="requestNotifPermission()">Enable notifications</button>';
   }
 
+  var fontOptionsHtml = Object.keys(FONT_OPTIONS).map(function(key){
+    var f = FONT_OPTIONS[key];
+    var selected = state.fontFamily === key;
+    var check = selected ? '<svg class="font-option-check" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>' : '';
+    return '<button class="font-option'+(selected?' selected':'')+'" style="font-family:'+f.stack+';" onclick="applyFont(\''+key+'\')">' +
+      '<div><p class="font-option-name">'+escapeHtml(f.label)+'</p><p class="font-option-note">'+escapeHtml(f.note)+'</p></div>' +
+      check +
+    '</button>';
+  }).join('');
+
   document.getElementById('screen').innerHTML =
     '<h2 class="title">Settings</h2>' +
     '<div class="settings-section">' +
@@ -1170,10 +1229,16 @@ function renderSettings(){
     '<div class="settings-section">' +
       '<h3>Text size</h3>' +
       '<div class="size-row">' +
+        '<button class="chip '+(state.textSize==='small'?'selected':'')+'" onclick="setTextSize(\'small\')">Small</button>' +
         '<button class="chip '+(state.textSize==='standard'?'selected':'')+'" onclick="setTextSize(\'standard\')">Standard</button>' +
         '<button class="chip '+(state.textSize==='large'?'selected':'')+'" onclick="setTextSize(\'large\')">Large</button>' +
         '<button class="chip '+(state.textSize==='xl'?'selected':'')+'" onclick="setTextSize(\'xl\')">Extra large</button>' +
       '</div>' +
+    '</div>' +
+    '<div class="settings-section">' +
+      '<h3>Typeface</h3>' +
+      '<p class="lede" style="margin:0 0 10px;">Pick whichever is easiest for you to read. Options below are shown in their own font.</p>' +
+      fontOptionsHtml +
     '</div>' +
     apiKeySectionHtml() +
     '<div class="settings-section">' +
