@@ -318,6 +318,13 @@
   .dispenser-log-row{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:0.76rem; color:#B9E4D0; padding:3px 0; line-height:1.4; border-bottom:1px solid rgba(255,255,255,0.06);}
   .dispenser-log-row:last-child{border-bottom:none;}
   .dispenser-log-time{color:#7C93A6;}
+
+  /* Medication info (description / category / conditions) */
+  .med-info-toggle{margin-top:6px; font-size:0.82rem; text-decoration:underline; color:var(--primary); background:none; border:none; cursor:pointer; padding:4px 0; font-family:inherit; font-weight:700;}
+  .med-info-body{background:var(--chip-bg); border-radius:12px; padding:10px 12px; margin-top:4px;}
+  .med-info-category{display:inline-block; font-size:0.74rem; font-weight:700; color:var(--primary-dark); background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:3px 10px; margin:0 0 7px;}
+  .med-info-desc{font-size:0.85rem; color:var(--text); margin:0 0 7px; line-height:1.45;}
+  .med-info-conditions{font-size:0.82rem; color:var(--text-secondary); margin:0; line-height:1.45;}
 </style>
 </head>
 <body>
@@ -347,10 +354,22 @@ var state = {
   view: 'home',
   textSize: 'standard',
   meds: [
-    { id: 1, name: 'Lisinopril', dosage: '10 mg', instructions: 'Take one tablet by mouth in the morning.', type: 'scheduled', times: ['08:00'], color: 0, pillsTotal: 30, pillsRemaining: 9, expiryDate: '2026-11-15', boxId: 1 },
-    { id: 2, name: 'Metformin', dosage: '500 mg', instructions: 'Take one tablet twice a day with food.', type: 'scheduled', times: ['08:00', '18:00'], color: 1, pillsTotal: 60, pillsRemaining: 6, expiryDate: '2026-08-20', boxId: 2 },
-    { id: 3, name: 'Vitamin D3', dosage: '1000 IU', instructions: 'Take one capsule daily in the morning.', type: 'scheduled', times: ['08:00'], color: 2, pillsTotal: 90, pillsRemaining: 52, expiryDate: '2027-02-01', boxId: 3 },
-    { id: 4, name: 'Acetaminophen', dosage: '500 mg', instructions: 'Take 1-2 tablets every 6 hours as needed for pain. Do not take more than 4 doses in 24 hours.', type: 'prn', prnMax: 4, times: [], color: 3, pillsTotal: 24, pillsRemaining: 18, expiryDate: '2026-06-01', boxId: 4 }
+    { id: 1, name: 'Lisinopril', dosage: '10 mg', instructions: 'Take one tablet by mouth in the morning.', type: 'scheduled', times: ['08:00'], color: 0, pillsTotal: 30, pillsRemaining: 9, expiryDate: '2026-11-15', boxId: 1,
+      category: 'ACE inhibitor (blood pressure medication)',
+      description: 'Lisinopril relaxes and widens blood vessels, making it easier for the heart to pump blood.',
+      conditions: ['High blood pressure (hypertension)', 'Heart failure', 'Protecting the kidneys in diabetes'] },
+    { id: 2, name: 'Metformin', dosage: '500 mg', instructions: 'Take one tablet twice a day with food.', type: 'scheduled', times: ['08:00', '18:00'], color: 1, pillsTotal: 60, pillsRemaining: 6, expiryDate: '2026-08-20', boxId: 2,
+      category: 'Biguanide (diabetes medication)',
+      description: 'Metformin lowers blood sugar by reducing how much glucose the liver releases and helping the body respond better to insulin.',
+      conditions: ['Type 2 diabetes'] },
+    { id: 3, name: 'Vitamin D3', dosage: '1000 IU', instructions: 'Take one capsule daily in the morning.', type: 'scheduled', times: ['08:00'], color: 2, pillsTotal: 90, pillsRemaining: 52, expiryDate: '2027-02-01', boxId: 3,
+      category: 'Vitamin / dietary supplement',
+      description: 'Vitamin D3 helps the body absorb calcium and supports bone, muscle, and immune health.',
+      conditions: ['Vitamin D deficiency', 'Bone health support'] },
+    { id: 4, name: 'Acetaminophen', dosage: '500 mg', instructions: 'Take 1-2 tablets every 6 hours as needed for pain. Do not take more than 4 doses in 24 hours.', type: 'prn', prnMax: 4, times: [], color: 3, pillsTotal: 24, pillsRemaining: 18, expiryDate: '2026-06-01', boxId: 4,
+      category: 'Analgesic / antipyretic (pain reliever)',
+      description: 'Acetaminophen relieves mild to moderate pain and helps reduce fever.',
+      conditions: ['Pain relief', 'Fever reduction'] }
   ],
   nextId: 5,
   takenLog: {},
@@ -359,6 +378,8 @@ var state = {
   extracted: null,
   scanError: null,
   caregiverAlerts: true,
+  expandedInfo: {},
+  medInfoLookupBusy: false,
   activeAlert: null,
   firedKeys: {},
   voiceEnabled: true,
@@ -693,6 +714,27 @@ function pillMeterHtml(med){
   '</div>';
 }
 
+function toggleMedInfo(medId){
+  state.expandedInfo[medId] = !state.expandedInfo[medId];
+  render();
+}
+
+function medInfoHtml(med){
+  var hasInfo = med.category || med.description || (med.conditions && med.conditions.length);
+  if (!hasInfo) return '';
+  var expanded = !!state.expandedInfo[med.id];
+  var body = '';
+  if (expanded){
+    body = '<div class="med-info-body">' +
+      (med.category ? '<span class="med-info-category">'+escapeHtml(med.category)+'</span>' : '') +
+      (med.description ? '<p class="med-info-desc">'+escapeHtml(med.description)+'</p>' : '') +
+      (med.conditions && med.conditions.length ? '<p class="med-info-conditions"><strong>Commonly used for:</strong> '+escapeHtml(med.conditions.join(', '))+'</p>' : '') +
+      '<p class="disclaimer" style="margin-top:6px;">General reference info, not medical advice. Confirm with your pharmacist or doctor.</p>' +
+    '</div>';
+  }
+  return '<button class="med-info-toggle" onclick="toggleMedInfo('+med.id+')">'+(expanded?'Hide details':'What is this for?')+'</button>' + body;
+}
+
 function buildReminderList(){
   var entries = [];
   state.meds.forEach(function(med){
@@ -800,6 +842,7 @@ function renderHome(){
           pillMeterHtml(e.med) +
           (e.med.expiryDate ? '<p class="expiry-line">Expires '+escapeHtml(expiryLabel(e.med.expiryDate))+'</p>' : '') +
           actionOrNote +
+          medInfoHtml(e.med) +
         '</div>' +
       '</div></div>';
     }).join('');
@@ -858,6 +901,7 @@ function renderHome(){
           pillMeterHtml(med) +
           (med.expiryDate ? '<p class="expiry-line">Expires '+escapeHtml(expiryLabel(med.expiryDate))+'</p>' : '') +
           actionOrNote +
+          medInfoHtml(med) +
         '</div></div></div>';
     }).join('');
   }
@@ -956,10 +1000,25 @@ function captureFromVideo(){
   analyzePhoto(dataUrl, 'image/jpeg');
 }
 
+function medInfoSectionHtml(ex){
+  return '<div class="settings-section" style="margin-top:4px;">' +
+    '<h3 style="font-size:0.95rem;">About this medication</h3>' +
+    '<button class="btn btn-secondary btn-small" onclick="lookupMedInfo()"'+(state.medInfoLookupBusy?' disabled':'')+'>'+(state.medInfoLookupBusy?'Looking up…':'Look up medication info')+'</button>' +
+    '<label class="field-label">Category</label>' +
+    '<input type="text" id="f-category" value="'+escapeAttr(ex.category || '')+'" placeholder="e.g. ACE inhibitor">' +
+    '<label class="field-label">What it\'s for</label>' +
+    '<textarea id="f-description" placeholder="Short plain-language description">'+escapeHtml(ex.description || '')+'</textarea>' +
+    '<label class="field-label">Conditions it treats</label>' +
+    '<input type="text" id="f-conditions" value="'+escapeAttr((ex.conditions || []).join(', '))+'" placeholder="Comma-separated, e.g. High blood pressure, Heart failure">' +
+    '<p class="disclaimer">General reference info, not medical advice — confirm with your pharmacist or doctor.</p>' +
+  '</div>';
+}
+
 function renderConfirm(){
-  var ex = state.extracted || { name: '', dosage: '', instructions: '', selectedTimes: [], type: 'scheduled', prnMax: 4, boxId: null };
+  var ex = state.extracted || { name: '', dosage: '', instructions: '', selectedTimes: [], type: 'scheduled', prnMax: 4, boxId: null, category: '', description: '', conditions: [] };
   if (!ex.type) ex.type = 'scheduled';
   if (!ex.prnMax) ex.prnMax = 4;
+  if (!ex.conditions) ex.conditions = [];
   var notice;
   if (state.scanError === 'nokey'){
     notice = '<div class="notice">No Anthropic API key is set, so the photo couldn\'t be read automatically. Add one in Settings, or just fill in the details below by hand.</div>';
@@ -1002,6 +1061,7 @@ function renderConfirm(){
     '<input type="text" id="f-dosage" value="'+escapeAttr(ex.dosage)+'">' +
     '<label class="field-label">Instructions</label>' +
     '<textarea id="f-instructions">'+escapeHtml(ex.instructions)+'</textarea>' +
+    medInfoSectionHtml(ex) +
     '<label class="field-label">How is this taken?</label>' +
     '<div class="chip-row">' +
       '<button class="chip '+(ex.type==='scheduled'?'selected':'')+'" onclick="setMedType(\'scheduled\')">On a schedule</button>' +
@@ -1291,6 +1351,12 @@ function saveMedication(){
     med.expiryDate = expiryEl.value;
   }
   med.boxId = state.extracted.boxId || null;
+  var categoryEl = document.getElementById('f-category');
+  var descriptionEl = document.getElementById('f-description');
+  var conditionsEl = document.getElementById('f-conditions');
+  med.category = categoryEl ? categoryEl.value.trim() : '';
+  med.description = descriptionEl ? descriptionEl.value.trim() : '';
+  med.conditions = conditionsEl ? conditionsEl.value.split(',').map(function(s){ return s.trim(); }).filter(Boolean) : [];
   state.meds.push(med);
   state.view = 'home';
   render();
@@ -1368,7 +1434,7 @@ function handleSelectedFile(file){
     return analyzePhoto(dataUrl, state.photoMime);
   }).catch(function(){
     state.scanError = true;
-    state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null };
+    state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null, category:'', description:'', conditions:[] };
     state.view = 'confirm';
     render();
   });
@@ -1386,7 +1452,7 @@ document.getElementById('galleryInput').addEventListener('change', function(e){
 function analyzePhoto(dataUrl, mime){
   if (!state.apiKey){
     state.scanError = 'nokey';
-    state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null };
+    state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null, category:'', description:'', conditions:[] };
     state.view = 'confirm';
     render();
     return Promise.resolve();
@@ -1394,11 +1460,17 @@ function analyzePhoto(dataUrl, mime){
   var base64 = dataUrl.split(',')[1];
   var prompt = 'You are looking at a photo of a medication bottle, box, or blister pack. ' +
     'Identify the medication name, the strength or dosage printed on the label, and the dosing ' +
-    'instructions (such as how many times a day and any timing notes). ' +
+    'instructions (such as how many times a day and any timing notes). Also identify general reference ' +
+    'information about this medication: its drug category/class, a short plain-language description of ' +
+    'what it does, and the conditions it is commonly used to treat. ' +
     'Respond with ONLY a JSON object and nothing else, no markdown fences, in exactly this shape: ' +
-    '{"name":"...","dosage":"...","instructions":"...","suggestedTimes":["08:00","20:00"]}. ' +
+    '{"name":"...","dosage":"...","instructions":"...","suggestedTimes":["08:00","20:00"],' +
+    '"category":"...","description":"...","conditions":["...","..."]}. ' +
     'suggestedTimes should be 24-hour HH:MM strings reflecting how many times a day the label says to take it, ' +
-    'spaced sensibly through waking hours. If a field is not clearly legible, make your best reasonable guess.';
+    'spaced sensibly through waking hours. category should be a short drug class label (e.g. "ACE inhibitor"). ' +
+    'description should be 1-2 plain-language sentences. conditions should be a short list (1-4 items) of ' +
+    'conditions or symptoms it is commonly used to treat. If a field is not clearly legible, make your best ' +
+    'reasonable guess; if you cannot identify the medication at all, leave category/description/conditions empty.';
 
   return fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -1430,7 +1502,7 @@ function analyzePhoto(dataUrl, mime){
     try { parsed = JSON.parse(cleaned); } catch (err) { parsed = null; }
     if (!parsed || !parsed.name){
       state.scanError = true;
-      state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null };
+      state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null, category:'', description:'', conditions:[] };
     } else {
       state.scanError = false;
       state.extracted = {
@@ -1442,7 +1514,10 @@ function analyzePhoto(dataUrl, mime){
         prnMax: 4,
         pillsTotal: '',
         expiryDate: '',
-        boxId: null
+        boxId: null,
+        category: parsed.category || '',
+        description: parsed.description || '',
+        conditions: Array.isArray(parsed.conditions) ? parsed.conditions : []
       };
     }
     state.view = 'confirm';
@@ -1451,7 +1526,7 @@ function analyzePhoto(dataUrl, mime){
     console.error('[analyzePhoto]', err);
     state.scanError = true;
     state.scanErrorDetail = (err && err.message) || String(err);
-    state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null };
+    state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null, category:'', description:'', conditions:[] };
     state.view = 'confirm';
     render();
   });
@@ -1476,14 +1551,58 @@ function getApiMessages(){
   return msgs.slice(idx).map(function(m){ return { role: m.role, content: m.text }; });
 }
 
+function lookupMedInfo(){
+  var nameEl = document.getElementById('f-name');
+  var dosageEl = document.getElementById('f-dosage');
+  var name = nameEl ? nameEl.value.trim() : '';
+  var dosage = dosageEl ? dosageEl.value.trim() : '';
+  if (!name){
+    alert('Enter the medication name first.');
+    return;
+  }
+  if (!state.apiKey){
+    alert('Add an Anthropic API key in Settings to look up medication info.');
+    return;
+  }
+  state.medInfoLookupBusy = true;
+  render();
+  var prompt = 'Provide general reference information about the following medication: ' + name + (dosage ? (' ' + dosage) : '') + '. ' +
+    'Respond with ONLY a JSON object, no markdown fences, in exactly this shape: ' +
+    '{"category":"...","description":"...","conditions":["...","..."]}. ' +
+    'category should be a short drug class label (e.g. "ACE inhibitor"). description should be 1-2 plain-language ' +
+    'sentences explaining what it does. conditions should be a short list (1-4 items) of conditions or symptoms ' +
+    'it is commonly used to treat. This is for general reference only, not medical advice.';
+  callClaude('', [{ role: 'user', content: prompt }], 400).then(function(text){
+    var cleaned = (text || '').replace(/```json|```/g, '').trim();
+    var parsed;
+    try { parsed = JSON.parse(cleaned); } catch (e) { parsed = null; }
+    state.medInfoLookupBusy = false;
+    if (!parsed){
+      alert('Could not look up medication info just now. Please try again.');
+      render();
+      return;
+    }
+    state.extracted.category = parsed.category || '';
+    state.extracted.description = parsed.description || '';
+    state.extracted.conditions = Array.isArray(parsed.conditions) ? parsed.conditions : [];
+    render();
+  }).catch(function(err){
+    state.medInfoLookupBusy = false;
+    alert('Could not look up medication info: ' + ((err && err.message) || err));
+    render();
+  });
+}
+
 function callClaude(system, messages, maxTokens){
   if (!state.apiKey){
     return Promise.reject(new Error('No API key set'));
   }
+  var body = { model: CLAUDE_MODEL, max_tokens: maxTokens || 300, messages: messages };
+  if (system) body.system = system;
   return fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: anthropicHeaders(),
-    body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: maxTokens || 300, system: system, messages: messages })
+    body: JSON.stringify(body)
   }).then(function(res){
     if (!res.ok){
       return res.json().catch(function(){ return null; }).then(function(errBody){
