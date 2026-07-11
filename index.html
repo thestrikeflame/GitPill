@@ -353,8 +353,12 @@
   .med-info-conditions{font-size:0.82rem; color:var(--text-secondary); margin:7px 0 0; line-height:1.45;}
   .med-info-recommend{font-size:0.82rem; color:var(--text-secondary); margin:9px 0 0; line-height:1.45;}
   .med-info-recommend-list{font-size:0.82rem; color:var(--text-secondary); margin:2px 0 0; padding-left:20px; line-height:1.5;}
-  .med-info-warn{font-size:0.82rem; color:var(--warn-fg); margin:9px 0 0; line-height:1.45;}
-  .med-info-warn-list{font-size:0.82rem; color:var(--warn-fg); background:var(--warn-bg); margin:2px 0 0; padding:8px 10px 8px 26px; border-radius:10px; line-height:1.5;}
+
+  /* Always-visible medication warnings banner */
+  .med-warning-banner{background:var(--warn-bg); border:1px solid #EED9A6; border-radius:12px; padding:10px 12px; margin-top:var(--sp-2);}
+  .med-warning-head{display:flex; align-items:center; gap:6px; color:var(--warn-fg); font-weight:700; font-size:0.86rem;}
+  .med-warning-head svg{flex:none;}
+  .med-warning-list{margin:4px 0 0; padding-left:24px; color:var(--warn-fg); font-size:0.82rem; line-height:1.5;}
 </style>
 </head>
 <body>
@@ -870,9 +874,22 @@ function brandNameHtml(med){
   return ' <span class="med-brand">('+escapeHtml(med.brandNames.join(', '))+')</span>';
 }
 
+function warningIconSvg(size){
+  return '<svg viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+}
+
+function medWarningsHtml(med){
+  if (!med.warnings || !med.warnings.length) return '';
+  var lis = med.warnings.map(function(w){ return '<li>'+escapeHtml(w)+'</li>'; }).join('');
+  return '<div class="med-warning-banner">' +
+    '<div class="med-warning-head">'+warningIconSvg(18)+'<span>Warnings</span></div>' +
+    '<ul class="med-warning-list">'+lis+'</ul>' +
+  '</div>';
+}
+
 function medInfoHtml(med){
   var hasInfo = med.category || med.description || (med.conditions && med.conditions.length) ||
-    (med.recommendations && med.recommendations.length) || (med.warnings && med.warnings.length);
+    (med.recommendations && med.recommendations.length);
   if (!hasInfo) return '';
   var expanded = !!state.expandedInfo[med.id];
   var body = '';
@@ -882,7 +899,6 @@ function medInfoHtml(med){
       (med.description ? '<p class="med-info-desc">'+escapeHtml(med.description)+'</p>' : '') +
       (med.conditions && med.conditions.length ? '<p class="med-info-conditions"><strong>Commonly used for:</strong> '+escapeHtml(med.conditions.join(', '))+'</p>' : '') +
       (med.recommendations && med.recommendations.length ? medInfoListHtml(med.recommendations, 'med-info-recommend', '<strong>Recommendations</strong>') : '') +
-      (med.warnings && med.warnings.length ? medInfoListHtml(med.warnings, 'med-info-warn', '<strong>⚠ Warnings</strong>') : '') +
       '<p class="disclaimer" style="margin-top:8px;">General reference info, not medical advice. Confirm with your pharmacist or doctor.</p>' +
     '</div>';
   }
@@ -996,6 +1012,7 @@ function renderHome(){
           pillMeterHtml(e.med) +
           (e.med.expiryDate ? '<p class="expiry-line">Expires '+escapeHtml(expiryLabel(e.med.expiryDate))+'</p>' : '') +
           actionOrNote +
+          medWarningsHtml(e.med) +
           medInfoHtml(e.med) +
         '</div>' +
       '</div></div>';
@@ -1055,6 +1072,7 @@ function renderHome(){
           pillMeterHtml(med) +
           (med.expiryDate ? '<p class="expiry-line">Expires '+escapeHtml(expiryLabel(med.expiryDate))+'</p>' : '') +
           actionOrNote +
+          medWarningsHtml(med) +
           medInfoHtml(med) +
         '</div></div></div>';
     }).join('');
