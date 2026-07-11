@@ -465,8 +465,10 @@ var state = {
     reader: null,
     label: null,
     lastAction: null,
-    log: []
-  }
+    log: [],
+    openBoxes: {}
+  },
+  autoOpenDispenser: false
 };
 
 var DISPENSER_BOX_COUNT = 4;
@@ -725,15 +727,31 @@ async function openBox(medId){
   render();
   var ok = await sendServoCommand(med.boxId, 'OPEN');
   if (ok){
-    state.dispenser.lastAction = 'Box ' + med.boxId + ' is open.';
-    render();
-    setTimeout(function(){
-      sendServoCommand(med.boxId, 'CLOSE');
-      state.dispenser.lastAction = 'Box ' + med.boxId + ' closed.';
-      render();
-    }, 2500);
+    state.dispenser.openBoxes[med.boxId] = true;
+    state.dispenser.lastAction = 'Box ' + med.boxId + ' is open — it will close once marked as taken.';
   } else {
     state.dispenser.lastAction = null;
+  }
+  render();
+}
+
+async function closeBox(medId){
+  var med = state.meds.filter(function(m){ return m.id === medId; })[0];
+  if (!med || !med.boxId) return;
+  var ok = await sendServoCommand(med.boxId, 'CLOSE');
+  if (ok){
+    delete state.dispenser.openBoxes[med.boxId];
+    state.dispenser.lastAction = 'Box ' + med.boxId + ' closed.';
+  }
+  render();
+}
+
+async function closeBoxIfOpen(boxId){
+  if (!boxId || !state.dispenser.openBoxes[boxId]) return;
+  var ok = await sendServoCommand(boxId, 'CLOSE');
+  if (ok){
+    delete state.dispenser.openBoxes[boxId];
+    state.dispenser.lastAction = 'Box ' + boxId + ' closed.';
     render();
   }
 }
@@ -871,6 +889,14 @@ function medInfoListHtml(items, cssClass, label){
   return '<p class="'+cssClass+'" style="margin-bottom:0;">'+label+'</p><ul class="'+cssClass+'-list">'+lis+'</ul>';
 }
 
+function boxButtonHtml(med){
+  if (!med.boxId) return '';
+  var isOpen = !!state.dispenser.openBoxes[med.boxId];
+  return isOpen
+    ? '<button class="btn btn-secondary btn-small" onclick="closeBox('+med.id+')">Close box '+med.boxId+'</button>'
+    : '<button class="btn btn-secondary btn-small" onclick="openBox('+med.id+')">Open box '+med.boxId+'</button>';
+}
+
 function brandNameHtml(med){
   if (!med.brandNames || !med.brandNames.length) return '';
   return ' <span class="med-brand">('+escapeHtml(med.brandNames.join(', '))+')</span>';
@@ -936,6 +962,7 @@ function logPrnDose(medId){
     med.pillsRemaining = Math.max(0, med.pillsRemaining - 1);
   }
   render();
+  if (med) closeBoxIfOpen(med.boxId);
 }
 
 function renderTabbar(){
@@ -1004,7 +1031,7 @@ function renderHome(){
       var actionOrNote = expired
         ? '<p class="expiry-note">This prescription expired '+escapeHtml(expiryLabel(e.med.expiryDate))+'. Please don\'t take it — check with your pharmacist about disposal and a refill.</p>'
         : (isTaken ? '' : '<div class="row-actions"><button class="btn btn-secondary btn-small" onclick="markTaken('+e.med.id+',\''+e.time+'\')">Mark as taken</button>' +
-            (e.med.boxId ? '<button class="btn btn-secondary btn-small" onclick="openBox('+e.med.id+')">Open box '+e.med.boxId+'</button>' : '') +
+            boxButtonHtml(e.med) +
           '</div>');
       return '<div class="card'+(expired?' expired-card':'')+'"><div class="med-row">' +
         '<div class="pill-icon" style="background:'+iconBg+';color:'+iconColor+';">'+iconPill(22, iconColor)+'</div>' +
@@ -1064,7 +1091,7 @@ function renderHome(){
       var actionOrNote = expired
         ? '<p class="expiry-note">This medication expired '+escapeHtml(expiryLabel(med.expiryDate))+'. Please don\'t take it — check with your pharmacist about disposal and a refill.</p>'
         : '<div class="row-actions"><button class="btn btn-secondary btn-small" onclick="logPrnDose('+med.id+')">Log a dose now</button>' +
-            (med.boxId ? '<button class="btn btn-secondary btn-small" onclick="openBox('+med.id+')">Open box '+med.boxId+'</button>' : '') +
+            boxButtonHtml(med) +
           '</div>';
       return '<div class="card'+(expired?' expired-card':'')+'"><div class="med-row">' +
         '<div class="pill-icon" style="background:'+iconBg+';color:'+iconColor+';">'+iconPill(22,iconColor)+'</div>' +
@@ -1450,11 +1477,16 @@ function dispenserSectionHtml(){
     }).join('');
     logHtml = '<p class="field-label" style="margin-top:14px;">Activity log</p><div class="dispenser-log">' + rows + '</div>';
   }
+  var autoOpenToggle = '<div class="toggle-row"><span>Automatically open the box when a dose is due</span>' +
+      '<div class="switch '+(state.autoOpenDispenser?'on':'')+'" onclick="toggleAutoOpenDispenser()"><div class="knob"></div></div>' +
+    '</div>' +
+    '<p class="disclaimer" style="margin-top:6px;">Off by default. Only turn this on if it\'s safe for the box to open on its own — keep it off if a small child or pet could reach the dispenser. The box now stays open until the dose is marked as taken, then closes automatically.</p>';
   return '<div class="settings-section">' +
     '<h3>Pill dispenser</h3>' +
     '<p class="lede">Connect the Arduino over USB so "Open box" buttons on the home screen can move the servos.</p>' +
     status +
     action +
+    autoOpenToggle +
     lastAction +
     logHtml +
   '</div>';
@@ -1523,6 +1555,7 @@ function markTaken(medId, time){
     med.pillsRemaining = Math.max(0, med.pillsRemaining - 1);
   }
   render();
+  if (med) closeBoxIfOpen(med.boxId);
 }
 
 function toggleTime(t){
@@ -1550,6 +1583,10 @@ function toggleCaregiver(){
 }
 function toggleVoice(){
   state.voiceEnabled = !state.voiceEnabled;
+  render();
+}
+function toggleAutoOpenDispenser(){
+  state.autoOpenDispenser = !state.autoOpenDispenser;
   render();
 }
 function sendCheckinNotification(){
@@ -1631,6 +1668,9 @@ function sendTestReminder(){
     state.activeAlert = { med: med, time: time, real: false };
     render();
   }
+  if (state.autoOpenDispenser && state.dispenser.connected && med.boxId){
+    openBox(med.id);
+  }
 }
 
 function resolveAlert(taken){
@@ -1662,6 +1702,9 @@ function checkReminders(){
           if (!sent){
             state.activeAlert = { med: med, time: t, real: false };
             render();
+          }
+          if (state.autoOpenDispenser && state.dispenser.connected && med.boxId){
+            openBox(med.id);
           }
         })(med, t);
         return;
