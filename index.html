@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedClear — medication reminders</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EAF3FB;
+    --surface:#FFFFFF;
+    --primary:#1B5FA8;
+    --primary-dark:#0E3F73;
+    --primary-light:#DCEEFB;
+    --chip-bg:#EAF4FC;
+    --text:#16263B;
+    --text-secondary:#52708A;
+    --border:#D3E6F7;
+    --warn-bg:#FBEFD9;
+    --warn-fg:#8A5A0B;
+    --good-bg:#E1F3EA;
+    --good-fg:#1F6B49;
+    --scale:1;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  html{ font-size:calc(16px * var(--scale)); }
+  html[data-size="large"]{ --scale:1.18; }
+  html[data-size="xl"]{ --scale:1.36; }
+  body{
+    font-family:'Atkinson Hyperlegible', Arial, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    display:flex;
+    justify-content:center;
+    padding:28px 12px 48px;
+    min-height:100vh;
+  }
+  .page{display:flex; flex-direction:column; align-items:center; gap:14px; width:100%; max-width:420px;}
+  .caption{
+    font-size:13px; color:var(--text-secondary); text-align:center; max-width:360px; line-height:1.5;
+  }
+  .phone{
+    position:relative;
+    width:390px;
+    max-width:94vw;
+    background:var(--surface);
+    border-radius:34px;
+    border:1px solid var(--border);
+    box-shadow:0 18px 40px rgba(14,63,115,0.12);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    height:760px;
+  }
+  .statusbar{
+    background:var(--primary);
+    color:#fff;
+    padding:14px 22px 16px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .statusbar .logo{
+    width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,0.18);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .statusbar h1{font-size:1.05rem; margin:0; font-weight:700; letter-spacing:0.2px;}
+  .statusbar .sub{font-size:0.72rem; opacity:0.85; margin:0;}
+  .screen{
+    flex:1;
+    overflow-y:auto;
+    padding:20px 20px 16px;
+    background:var(--bg);
+    position:relative;
+  }
+  .screen::-webkit-scrollbar{width:0;}
+  .tabbar{
+    display:flex;
+    border-top:1px solid var(--border);
+    background:var(--surface);
+  }
+  .tabbtn{
+    flex:1;
+    border:none;
+    background:none;
+    padding:12px 4px 14px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+    color:var(--text-secondary);
+    font-family:inherit;
+    font-size:0.74rem;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .tabbtn.active{color:var(--primary);}
+  .tabbtn svg{width:24px;height:24px;}
+  h2.title{font-size:1.32rem; margin:2px 0 4px; font-weight:700; color:var(--text);}
+  p.lede{font-size:0.92rem; color:var(--text-secondary); margin:0 0 18px; line-height:1.5;}
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:16px;
+    margin-bottom:14px;
+  }
+  .med-row{display:flex; align-items:flex-start; gap:13px;}
+  .pill-icon{
+    width:46px;height:46px;border-radius:23px;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700; font-size:1rem;
+  }
+  .med-name{font-size:1.08rem; font-weight:700; margin:0 0 2px;}
+  .med-meta{font-size:0.86rem; color:var(--text-secondary); margin:0;}
+  .badge{
+    display:inline-block; font-size:0.74rem; font-weight:700; padding:3px 10px;
+    border-radius:20px; margin-top:7px;
+  }
+  .badge.due{background:var(--warn-bg); color:var(--warn-fg);}
+  .badge.taken{background:var(--good-bg); color:var(--good-fg);}
+  .badge.upcoming{background:var(--chip-bg); color:var(--primary-dark);}
+  .row-actions{margin-top:10px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+  .btn{
+    border:none; border-radius:26px; font-family:inherit; cursor:pointer;
+    font-weight:700; font-size:0.95rem; padding:13px 20px;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .btn-primary{background:var(--primary); color:#fff; width:100%;}
+  .btn-primary:active{background:var(--primary-dark);}
+  .btn-secondary{background:var(--chip-bg); color:var(--primary-dark); width:100%;}
+  .btn-small{padding:9px 16px; font-size:0.85rem; width:auto;}
+  .btn-ghost{background:none; color:var(--primary); padding:8px 4px; width:100%; text-decoration:underline;}
+  .fab-wrap{position:sticky; bottom:0; padding-top:6px; background:linear-gradient(to top, var(--bg) 60%, rgba(234,243,251,0));}
+  .field-label{font-size:0.86rem; font-weight:700; color:var(--text); display:block; margin:14px 0 6px;}
+  input[type="text"], textarea{
+    width:100%; border:1px solid var(--border); border-radius:12px;
+    padding:12px 13px; font-family:inherit; font-size:0.98rem; color:var(--text);
+    background:var(--surface);
+  }
+  textarea{resize:vertical; min-height:64px;}
+  .chip-row{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;}
+  .chip{
+    border:1.5px solid var(--border); background:var(--surface); color:var(--text);
+    border-radius:20px; padding:9px 15px; font-family:inherit; font-size:0.86rem;
+    font-weight:700; cursor:pointer;
+  }
+  .chip.selected{background:var(--primary); border-color:var(--primary); color:#fff;}
+  .chip.removable{background:var(--chip-bg); border-color:var(--chip-bg); color:var(--primary-dark); display:flex; gap:6px; align-items:center;}
+  .photo-frame{
+    width:100%; aspect-ratio:4/3; border-radius:16px; background:var(--chip-bg);
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+    border:1.5px dashed var(--border); margin-bottom:16px;
+  }
+  .photo-frame img{width:100%; height:100%; object-fit:cover;}
+  .notice{
+    background:var(--warn-bg); color:var(--warn-fg); border-radius:12px; padding:11px 13px;
+    font-size:0.84rem; margin-bottom:14px; line-height:1.4;
+  }
+  .spin{
+    width:42px;height:42px;border-radius:50%;border:4px solid var(--chip-bg);
+    border-top-color:var(--primary); animation:sp 0.9s linear infinite; margin:0 auto 18px;
+  }
+  @keyframes sp{to{transform:rotate(360deg);}}
+  .center-pad{padding:50px 10px; text-align:center;}
+  .settings-section{margin-bottom:22px;}
+  .settings-section h3{font-size:0.95rem; margin:0 0 10px;}
+  .size-row{display:flex; gap:8px;}
+  .toggle-row{display:flex; align-items:center; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--border);}
+  .toggle-row:last-child{border-bottom:none;}
+  .switch{width:44px; height:26px; border-radius:14px; background:var(--border); position:relative; cursor:pointer; flex:none;}
+  .switch.on{background:var(--primary);}
+  .switch .knob{position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:left 0.15s;}
+  .switch.on .knob{left:21px;}
+  .overlay{
+    position:absolute; inset:0; background:rgba(14,38,59,0.45);
+    display:flex; align-items:center; justify-content:center; padding:24px; z-index:10;
+  }
+  .alert-card{
+    background:var(--surface); border-radius:22px; padding:26px 22px; text-align:center; width:100%;
+  }
+  .alert-pill{
+    width:64px;height:64px;border-radius:32px; background:var(--primary-light); color:var(--primary-dark);
+    display:flex; align-items:center; justify-content:center; margin:0 auto 14px;
+  }
+  .eyebrow{font-size:0.8rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.6px; margin:0 0 6px;}
+  .alert-name{font-size:1.3rem; font-weight:700; margin:0 0 4px;}
+  .alert-meta{font-size:0.95rem; color:var(--text-secondary); margin:0 0 20px;}
+  .alert-card .btn{margin-bottom:10px;}
+  .checkin-banner{
+    background:var(--primary-light); border:1px solid var(--border); border-radius:18px;
+    padding:14px 15px; margin-bottom:14px; display:flex; gap:12px; align-items:flex-start;
+  }
+  .checkin-banner .pill-icon{background:var(--surface);}
+  .disclaimer{font-size:0.76rem; color:var(--text-secondary); line-height:1.5; margin-top:6px;}
+  .chat-area{display:flex; flex-direction:column; gap:10px; margin-bottom:14px;}
+  .bubble-row{display:flex;}
+  .bubble-row.user{justify-content:flex-end;}
+  .bubble{
+    max-width:80%; padding:11px 14px; border-radius:16px; font-size:0.94rem; line-height:1.45;
+  }
+  .bubble.assistant{background:var(--surface); border:1px solid var(--border); border-bottom-left-radius:4px;}
+  .bubble.user{background:var(--primary); color:#fff; border-bottom-right-radius:4px;}
+  .chat-input-row{display:flex; gap:8px; align-items:flex-end; position:sticky; bottom:0; background:var(--bg); padding-top:6px;}
+  .chat-input-row textarea{flex:1; min-height:46px; max-height:90px;}
+  .mic-btn{
+    flex:none; width:46px; height:46px; border-radius:23px; border:none; cursor:pointer;
+    background:var(--chip-bg); color:var(--primary-dark); display:flex; align-items:center; justify-content:center;
+  }
+  .mic-btn.listening{background:#E24B4A; color:#fff;}
+  .send-btn{flex:none; width:46px; height:46px; border-radius:23px; border:none; cursor:pointer; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center;}
+  .severity-tag{font-size:0.78rem; font-weight:700; padding:3px 10px; border-radius:20px; display:inline-block; margin-top:6px;}
+  .severity-none, .severity-mild{background:var(--good-bg); color:var(--good-fg);}
+  .severity-moderate, .severity-severe{background:var(--warn-bg); color:var(--warn-fg);}
+  select{
+    width:100%; border:1px solid var(--border); border-radius:12px;
+    padding:12px 13px; font-family:inherit; font-size:0.98rem; color:var(--text); background:var(--surface);
+  }
+  .source-tag{font-size:0.72rem; color:var(--text-secondary); margin-top:2px;}
+  .doctor-entry{border-bottom:1px solid var(--border); padding:14px 0;}
+  .doctor-entry:last-child{border-bottom:none;}
+  .doctor-entry .d-date{font-size:0.8rem; color:var(--text-secondary); font-weight:700; margin:0 0 4px;}
+
+  /* Camera viewfinder */
+  .camera-wrap{
+    position:absolute; inset:0; background:#0b0b0c; z-index:5;
+    display:flex; flex-direction:column;
+  }
+  .camera-wrap video, .camera-wrap .cam-placeholder{
+    position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+  }
+  .cam-placeholder{
+    background:linear-gradient(160deg,#1c1c1e,#3a3a3c);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .cam-overlay{position:absolute; inset:0; display:flex; flex-direction:column;}
+  .cam-close{
+    position:absolute; top:18px; right:18px; width:34px; height:34px; border-radius:17px;
+    background:rgba(255,255,255,0.18); color:#fff; border:none; font-size:1.1rem; cursor:pointer; z-index:2;
+  }
+  .cam-caption{
+    align-self:center; margin-top:54px; background:rgba(20,20,22,0.7); color:#fff;
+    font-size:0.84rem; font-weight:700; padding:9px 16px; border-radius:20px; z-index:2;
+  }
+  .cam-frame{
+    flex:1; margin:18px 36px; border:3px solid rgba(255,255,255,0.85); border-radius:18px;
+    display:flex; align-items:flex-start; justify-content:center; z-index:1;
+  }
+  .cam-controls{
+    display:flex; justify-content:center; align-items:center; padding:26px 0 30px; z-index:2;
+  }
+  .shutter-btn{
+    width:70px; height:70px; border-radius:35px; background:#fff; border:5px solid rgba(255,255,255,0.4);
+    cursor:pointer;
+  }
+  .cam-fallback-card{
+    position:relative; z-index:2; margin:auto 24px; background:rgba(255,255,255,0.96); border-radius:18px;
+    padding:20px; text-align:center;
+  }
+
+  /* Alarm-style reminder */
+  .alarm-overlay{
+    position:absolute; inset:0; background:linear-gradient(160deg, var(--primary-dark), #0a1f33);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; z-index:10; color:#fff;
+  }
+  .alarm-status{font-size:0.74rem; opacity:0.8; margin-bottom:18px; text-align:center;}
+  .alarm-time{font-size:2.6rem; font-weight:700; letter-spacing:1px; margin:0 0 6px;}
+  .alarm-name{font-size:1.25rem; font-weight:700; margin:0 0 4px; text-align:center;}
+  .alarm-meta{font-size:0.95rem; opacity:0.85; margin:0 0 34px; text-align:center;}
+  .alarm-take{
+    width:100%; max-width:280px; background:#fff; color:var(--primary-dark); border:none; border-radius:30px;
+    padding:16px; font-family:inherit; font-weight:700; font-size:1.02rem; cursor:pointer; margin-bottom:12px;
+  }
+  .alarm-delay{
+    width:100%; max-width:280px; background:rgba(255,255,255,0.14); color:#fff; border:none; border-radius:30px;
+    padding:16px; font-family:inherit; font-weight:700; font-size:1.02rem; cursor:pointer;
+  }
+
+  /* Theme swatches */
+  .swatch-row{display:flex; gap:14px; margin-top:6px;}
+  .swatch{
+    width:42px; height:42px; border-radius:21px; cursor:pointer; border:3px solid transparent;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .swatch.active{border-color:var(--text);}
+  .notif-status{
+    font-size:0.82rem; padding:10px 12px; border-radius:12px; margin-bottom:10px; line-height:1.4;
+  }
+  .notif-status.granted{background:var(--good-bg); color:var(--good-fg);}
+  .notif-status.pending{background:var(--chip-bg); color:var(--primary-dark);}
+  .notif-status.blocked{background:var(--warn-bg); color:var(--warn-fg);}
+
+  /* Time grouping + history */
+  .time-header{font-size:0.85rem; font-weight:700; color:var(--text-secondary); margin:16px 0 8px;}
+  .time-header:first-child{margin-top:0;}
+  .history-row{display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border);}
+  .history-row:last-child{border-bottom:none;}
+  .history-date{font-size:0.95rem; font-weight:700;}
+  .history-frac{font-size:0.85rem; color:var(--text-secondary);}
+
+  /* Pill meter */
+  .pill-meter-wrap{margin-top:10px;}
+  .pill-meter-toprow{display:flex; align-items:center; gap:7px; margin-bottom:5px;}
+  .pill-meter-cute{flex:none; display:flex; align-items:center;}
+  .pill-meter-track{flex:1; height:9px; border-radius:6px; background:var(--chip-bg); overflow:hidden;}
+  .pill-meter-fill{height:100%; border-radius:6px; background:var(--primary); transition:width 0.25s;}
+  .pill-meter-fill.low{background:#D9534F;}
+  .pill-meter-label{font-size:0.78rem; color:var(--text-secondary); margin:0; display:flex; align-items:center; flex-wrap:wrap; gap:6px;}
+  .badge.refill{background:#FBE3E1; color:#A23B35;}
+  .badge.expired{background:#EDEFF2; color:#5C6774;}
+  .expired-card{opacity:0.6; filter:grayscale(0.9);}
+  .expiry-note{font-size:0.78rem; color:#8A3C1E; background:#FBEFD9; border-radius:10px; padding:8px 10px; margin-top:9px; line-height:1.4;}
+  .expiry-line{font-size:0.78rem; color:var(--text-secondary); margin:4px 0 0;}
+  .dispenser-log{background:#0F1B24; border-radius:12px; padding:10px 12px; margin-top:6px; max-height:200px; overflow-y:auto;}
+  .dispenser-log-row{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:0.76rem; color:#B9E4D0; padding:3px 0; line-height:1.4; border-bottom:1px solid rgba(255,255,255,0.06);}
+  .dispenser-log-row:last-child{border-bottom:none;}
+  .dispenser-log-time{color:#7C93A6;}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="phone" id="phone" data-size="standard">
+    <div class="statusbar">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="8" width="18" height="9" rx="4.5"/><path d="M9 8v9" stroke="#fff" stroke-width="2"/></svg>
+      </div>
+      <div>
+        <h1>MedClear</h1>
+        <p class="sub">Your medication companion</p>
+      </div>
+    </div>
+    <div class="screen" id="screen"></div>
+    <div class="tabbar" id="tabbar"></div>
+    <div id="overlaySlot"></div>
+  </div>
+  <p class="caption">This is a clickable prototype. The scan screen uses a real photo of a pill bottle and a real AI call to read the label — try it with your camera or a photo from your library.</p>
+</div>
+
+<input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none">
+<input type="file" id="galleryInput" accept="image/*" style="display:none">
+
+<script>
+var state = {
+  view: 'home',
+  textSize: 'standard',
+  meds: [
+    { id: 1, name: 'Lisinopril', dosage: '10 mg', instructions: 'Take one tablet by mouth in the morning.', type: 'scheduled', times: ['08:00'], color: 0, pillsTotal: 30, pillsRemaining: 9, expiryDate: '2026-11-15', boxId: 1 },
+    { id: 2, name: 'Metformin', dosage: '500 mg', instructions: 'Take one tablet twice a day with food.', type: 'scheduled', times: ['08:00', '18:00'], color: 1, pillsTotal: 60, pillsRemaining: 6, expiryDate: '2026-08-20', boxId: 2 },
+    { id: 3, name: 'Vitamin D3', dosage: '1000 IU', instructions: 'Take one capsule daily in the morning.', type: 'scheduled', times: ['08:00'], color: 2, pillsTotal: 90, pillsRemaining: 52, expiryDate: '2027-02-01', boxId: 3 },
+    { id: 4, name: 'Acetaminophen', dosage: '500 mg', instructions: 'Take 1-2 tablets every 6 hours as needed for pain. Do not take more than 4 doses in 24 hours.', type: 'prn', prnMax: 4, times: [], color: 3, pillsTotal: 24, pillsRemaining: 18, expiryDate: '2026-06-01', boxId: 4 }
+  ],
+  nextId: 5,
+  takenLog: {},
+  photoDataUrl: null,
+  photoMime: null,
+  extracted: null,
+  scanError: null,
+  caregiverAlerts: true,
+  activeAlert: null,
+  firedKeys: {},
+  voiceEnabled: true,
+  checkin: { messages: [], ended: false, busy: false },
+  checkinLog: {},
+  checkinResult: null,
+  prnDoseLog: {},
+  healthLog: [
+    { id: 1, dateLabel: formatWeekdayMonthDay(dateNDaysAgo(4)), severity: 'mild', text: 'Reported mild lower back stiffness in the morning, improved after moving around.', source: 'checkin' }
+  ],
+  addingNote: false,
+  listening: false,
+  theme: 'blue',
+  notifPermission: ('Notification' in window) ? Notification.permission : 'unsupported',
+  cameraSupported: null,
+  apiKey: (function(){ try { return localStorage.getItem('medclear_api_key') || ''; } catch(e){ return ''; } })(),
+  dispenser: {
+    supported: ('serial' in navigator),
+    connecting: false,
+    connected: false,
+    port: null,
+    writer: null,
+    reader: null,
+    label: null,
+    lastAction: null,
+    log: []
+  }
+};
+
+var DISPENSER_BOX_COUNT = 4;
+
+var CLAUDE_MODEL = 'claude-sonnet-5';
+
+function anthropicHeaders(){
+  return {
+    'Content-Type': 'application/json',
+    'x-api-key': state.apiKey,
+    'anthropic-version': '2023-06-01',
+    'anthropic-dangerous-direct-browser-access': 'true'
+  };
+}
+
+function saveApiKey(){
+  var el = document.getElementById('f-apikey');
+  var val = el ? el.value.trim() : '';
+  state.apiKey = val;
+  try { localStorage.setItem('medclear_api_key', val); } catch(e){ /* ignore storage errors */ }
+  render();
+}
+
+function clearApiKey(){
+  state.apiKey = '';
+  try { localStorage.removeItem('medclear_api_key'); } catch(e){ /* ignore */ }
+  render();
+}
+
+var THEMES = {
+  blue: {
+    '--bg':'#EAF3FB', '--surface':'#FFFFFF', '--primary':'#1B5FA8', '--primary-dark':'#0E3F73',
+    '--primary-light':'#DCEEFB', '--chip-bg':'#EAF4FC', '--text':'#16263B', '--text-secondary':'#52708A',
+    '--border':'#D3E6F7', '--warn-bg':'#FBEFD9', '--warn-fg':'#8A5A0B', '--good-bg':'#E1F3EA', '--good-fg':'#1F6B49',
+    swatch:'#1B5FA8', label:'Ocean Blue'
+  },
+  teal: {
+    '--bg':'#E9F6F3', '--surface':'#FFFFFF', '--primary':'#147D6F', '--primary-dark':'#0B4A41',
+    '--primary-light':'#D7EFE9', '--chip-bg':'#E4F4F0', '--text':'#16302B', '--text-secondary':'#54756D',
+    '--border':'#CFE7DF', '--warn-bg':'#FBEFD9', '--warn-fg':'#8A5A0B', '--good-bg':'#E1F3EA', '--good-fg':'#1F6B49',
+    swatch:'#147D6F', label:'Seafoam Teal'
+  },
+  blush: {
+    '--bg':'#FBEEF1', '--surface':'#FFFFFF', '--primary':'#BD4F77', '--primary-dark':'#7E3252',
+    '--primary-light':'#F7DDE6', '--chip-bg':'#FAE7ED', '--text':'#3B1C26', '--text-secondary':'#8A5F6B',
+    '--border':'#F0D2DA', '--warn-bg':'#FBEFD9', '--warn-fg':'#8A5A0B', '--good-bg':'#E1F3EA', '--good-fg':'#1F6B49',
+    swatch:'#BD4F77', label:'Soft Blush'
+  }
+};
+
+function logDispenserActivity(line){
+  var d = state.dispenser;
+  d.log.push({ time: new Date().toLocaleTimeString(), text: line });
+  if (d.log.length > 12) d.log.shift();
+  console.log('[dispenser]', line);
+  render();
+}
+
+async function readDispenserLoop(reader){
+  var buffer = '';
+  try {
+    while (true){
+      var result = await reader.read();
+      if (result.done) break;
+      buffer += result.value;
+      var lines = buffer.split('\n');
+      buffer = lines.pop();
+      lines.forEach(function(line){
+        line = line.trim();
+        if (line) logDispenserActivity('Received: ' + line);
+      });
+    }
+  } catch (err){
+    // Port was likely closed — nothing to do here.
+  }
+}
+
+async function connectDispenser(){
+  var d = state.dispenser;
+  if (!d.supported){
+    logDispenserActivity('This browser does not support Web Serial (navigator.serial is missing).');
+    return;
+  }
+  if (window.isSecureContext === false){
+    logDispenserActivity('Blocked: this page is not running in a secure context. Open the saved .html file directly rather than through a preview.');
+    return;
+  }
+  if (window.self !== window.top){
+    logDispenserActivity('Blocked: this page appears to be inside an iframe/preview. Download the file and open it in its own browser tab.');
+    return;
+  }
+  if (d.connecting || d.connected) return;
+  d.connecting = true;
+  render();
+  try {
+    var port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 9600 });
+    var encoder = new TextEncoderStream();
+    encoder.readable.pipeTo(port.writable);
+    var decoder = new TextDecoderStream();
+    port.readable.pipeTo(decoder.writable);
+    d.port = port;
+    d.writer = encoder.writable.getWriter();
+    d.reader = decoder.readable.getReader();
+    d.connected = true;
+    d.connecting = false;
+    var info = (port.getInfo && port.getInfo()) || {};
+    d.label = info.usbProductId ? ('USB device ' + info.usbProductId) : 'Connected device';
+    d.log = [];
+    logDispenserActivity('Connected' + (d.label ? (' — ' + d.label) : '') + '.');
+    readDispenserLoop(d.reader);
+  } catch (err){
+    d.connecting = false;
+    if (err && err.name === 'NotFoundError'){
+      logDispenserActivity('No port was selected. If the device list was empty, check the Arduino is plugged in and its drivers are installed.');
+    } else {
+      logDispenserActivity('Connection failed: ' + (err && (err.message || err.name) || err));
+    }
+  }
+  render();
+}
+
+async function disconnectDispenser(){
+  var d = state.dispenser;
+  try {
+    if (d.reader){
+      await d.reader.cancel();
+    }
+    if (d.writer){
+      await d.writer.close();
+    }
+    if (d.port){
+      await d.port.close();
+    }
+  } catch (err){
+    // Ignore close errors — we're tearing the connection down anyway.
+  }
+  d.port = null;
+  d.writer = null;
+  d.reader = null;
+  d.connected = false;
+  d.label = null;
+  logDispenserActivity('Disconnected.');
+}
+
+async function sendServoCommand(boxId, action){
+  var d = state.dispenser;
+  if (!d.connected || !d.writer){
+    logDispenserActivity('Ignored ' + action + ':' + boxId + ' — dispenser is not connected.');
+    alert('The dispenser isn\'t connected yet. Go to Settings to connect it.');
+    return false;
+  }
+  var command = action + ':' + boxId;
+  try {
+    await d.writer.write(command + '\n');
+    logDispenserActivity('Sent: ' + command);
+    return true;
+  } catch (err){
+    logDispenserActivity('Error sending ' + command + ': ' + (err.message || err));
+    alert('Could not reach the dispenser: ' + (err.message || err));
+    return false;
+  }
+}
+
+async function openBox(medId){
+  var med = state.meds.filter(function(m){ return m.id === medId; })[0];
+  if (!med || !med.boxId) return;
+  state.dispenser.lastAction = 'Opening box ' + med.boxId + ' for ' + med.name + '…';
+  render();
+  var ok = await sendServoCommand(med.boxId, 'OPEN');
+  if (ok){
+    state.dispenser.lastAction = 'Box ' + med.boxId + ' is open.';
+    render();
+    setTimeout(function(){
+      sendServoCommand(med.boxId, 'CLOSE');
+      state.dispenser.lastAction = 'Box ' + med.boxId + ' closed.';
+      render();
+    }, 2500);
+  } else {
+    state.dispenser.lastAction = null;
+    render();
+  }
+}
+
+function applyTheme(name){
+  state.theme = name;
+  var t = THEMES[name];
+  var el = document.getElementById('phone');
+  Object.keys(t).forEach(function(k){
+    if (k.indexOf('--') === 0) el.style.setProperty(k, t[k]);
+  });
+  render();
+}
+
+var MED_COLORS = [
+  { bg: '#DCEEFB', fg: '#0E3F73' },
+  { bg: '#E1F3EA', fg: '#1F6B49' },
+  { bg: '#FBE7E0', fg: '#8A3C1E' },
+  { bg: '#F0E6F7', fg: '#5B3680' }
+];
+
+var SCHEDULE_PRESETS = [
+  { label: 'Morning', time: '08:00' },
+  { label: 'Midday', time: '13:00' },
+  { label: 'Evening', time: '18:00' },
+  { label: 'Bedtime', time: '21:00' }
+];
+
+function todayKey(){
+  var d = new Date();
+  return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+}
+function dateNDaysAgo(n){
+  var d = new Date();
+  d.setDate(d.getDate() - n);
+  return d;
+}
+function formatMonthDay(date){
+  return date.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+}
+function formatWeekdayMonthDay(date){
+  return date.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric' });
+}
+function todayDateLabel(){
+  return 'Today · ' + formatMonthDay(new Date());
+}
+function nowHHMM(){
+  var d = new Date();
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+function formatTime(hhmm){
+  var parts = hhmm.split(':');
+  var h = parseInt(parts[0], 10);
+  var m = parts[1];
+  var ampm = h >= 12 ? 'PM' : 'AM';
+  var h12 = h % 12; if (h12 === 0) h12 = 12;
+  return h12 + ':' + m + ' ' + ampm;
+}
+function greeting(){
+  var h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+function iconPill(size, color){
+  return '<svg viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="'+color+'" stroke-width="2"><rect x="3" y="8" width="18" height="9" rx="4.5"/><path d="M9 8v9" stroke="'+color+'" stroke-width="2"/></svg>';
+}
+
+function iconCutePill(size, color, expired){
+  var h = Math.round(size * 0.55);
+  var eyes = expired
+    ? '<path d="M23.5 7 L26 9.6 M26 7 L23.5 9.6" stroke="'+color+'" stroke-width="1.3" stroke-linecap="round"/>' +
+      '<path d="M29 7 L31.5 9.6 M31.5 7 L29 9.6" stroke="'+color+'" stroke-width="1.3" stroke-linecap="round"/>'
+    : '<circle cx="25.5" cy="8.5" r="1.3" fill="'+color+'"/><circle cx="30.5" cy="8.5" r="1.3" fill="'+color+'"/>';
+  var mouth = expired
+    ? '<path d="M24.5 14.5 H31.5" stroke="'+color+'" stroke-width="1.5" stroke-linecap="round"/>'
+    : '<path d="M24.5 13.5 Q28 17 31.5 13.5" stroke="'+color+'" stroke-width="1.5" fill="none" stroke-linecap="round"/>';
+  return '<svg viewBox="0 0 40 22" width="'+size+'" height="'+h+'" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="1" y="1" width="38" height="20" rx="10" fill="#fff" stroke="'+color+'" stroke-width="2"/>' +
+    '<path d="M20,1 L11,1 A10,10 0 0 0 1,11 A10,10 0 0 0 11,21 L20,21 Z" fill="'+color+'"/>' +
+    '<path d="M20 2 L20 20" stroke="'+color+'" stroke-width="1.5"/>' +
+    eyes + mouth +
+  '</svg>';
+}
+
+function isExpired(med){
+  if (!med.expiryDate) return false;
+  var today = new Date();
+  today.setHours(0,0,0,0);
+  var exp = new Date(med.expiryDate + 'T00:00:00');
+  return exp < today;
+}
+
+function expiryLabel(dateStr){
+  if (!dateStr) return '';
+  var d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+}
+
+function pillMeterHtml(med){
+  var total = med.pillsTotal || 0;
+  if (total <= 0) return '';
+  var remaining = (typeof med.pillsRemaining === 'number') ? med.pillsRemaining : total;
+  if (remaining < 0) remaining = 0;
+  var expired = isExpired(med);
+  var pct = Math.max(0, Math.min(100, Math.round((remaining / total) * 100)));
+  var low = !expired && (remaining <= 5 || remaining <= Math.ceil(total * 0.2));
+  var dailyUsage = (med.type === 'prn') ? null : (med.times && med.times.length ? med.times.length : 1);
+  var daysLeft = (dailyUsage && dailyUsage > 0) ? Math.floor(remaining / dailyUsage) : null;
+
+  var label = remaining + ' of ' + total + ' pills left';
+  if (daysLeft !== null){
+    label += ' · about ' + daysLeft + (daysLeft === 1 ? ' day' : ' days') + ' left';
+  }
+  var lowBadge = low ? '<span class="badge refill">Refill soon</span>' : '';
+  var c = MED_COLORS[med.color % MED_COLORS.length];
+  var iconColor = expired ? '#8A97A6' : c.fg;
+
+  return '<div class="pill-meter-wrap">' +
+    '<div class="pill-meter-toprow">' +
+      '<span class="pill-meter-cute">'+iconCutePill(30, iconColor, expired)+'</span>' +
+      '<div class="pill-meter-track"><div class="pill-meter-fill'+(low?' low':'')+'" style="width:'+pct+'%;"></div></div>' +
+    '</div>' +
+    '<p class="pill-meter-label">'+label+lowBadge+'</p>' +
+  '</div>';
+}
+
+function buildReminderList(){
+  var entries = [];
+  state.meds.forEach(function(med){
+    if (med.type === 'prn') return;
+    med.times.forEach(function(t){
+      entries.push({ med: med, time: t });
+    });
+  });
+  entries.sort(function(a,b){ return a.time.localeCompare(b.time); });
+  return entries;
+}
+
+function getPrnDosesToday(medId){
+  var entry = state.prnDoseLog[medId];
+  if (!entry || entry.date !== todayKey()) return [];
+  return entry.times;
+}
+function logPrnDose(medId){
+  var entry = state.prnDoseLog[medId];
+  if (!entry || entry.date !== todayKey()){
+    entry = { date: todayKey(), times: [] };
+    state.prnDoseLog[medId] = entry;
+  }
+  entry.times.push(nowHHMM());
+  var med = state.meds.filter(function(m){ return m.id === medId; })[0];
+  if (med && typeof med.pillsRemaining === 'number' && !isExpired(med)){
+    med.pillsRemaining = Math.max(0, med.pillsRemaining - 1);
+  }
+  render();
+}
+
+function renderTabbar(){
+  var tabs = [
+    { id:'home', label:'Home', icon:'<path d="M4 12l8-7 8 7"/><path d="M6 11v8a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-8"/><path d="M10 20v-5h4v5"/>' },
+    { id:'scan', label:'Scan', icon:'<rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/>' },
+    { id:'history', label:'History', icon:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>' },
+    { id:'health', label:'Health', icon:'<path d="M20.8 8.6c0-2.5-2-4.4-4.4-4.4-1.6 0-3 .8-3.8 2.1-.8-1.3-2.2-2.1-3.8-2.1-2.4 0-4.4 2-4.4 4.4 0 5 8.2 10.4 8.2 10.4s8.2-5.4 8.2-10.4z"/>' },
+    { id:'settings', label:'Settings', icon:'<g transform="translate(12 12) scale(0.8) translate(-12 -12)"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82A1.65 1.65 0 0 0 3 13.09H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></g>' }
+  ];
+  var html = tabs.map(function(t){
+    var homeViews = ['home','checkin','checkin-result'];
+    var settingsViews = ['settings'];
+    var active = (t.id === 'home' && homeViews.indexOf(state.view) !== -1) ||
+      (t.id === 'scan' && ['scan','analyzing','confirm'].indexOf(state.view) !== -1) ||
+      (t.id === 'history' && state.view === 'history') ||
+      (t.id === 'health' && state.view === 'healthlog') ||
+      (t.id === 'settings' && settingsViews.indexOf(state.view) !== -1);
+    return '<button class="tabbtn '+(active?'active':'')+'" onclick="goView(\''+t.id+'\')">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+t.icon+'</svg>' +
+      '<span>'+t.label+'</span></button>';
+  }).join('');
+  document.getElementById('tabbar').innerHTML = html;
+}
+
+function goView(name){
+  if (name === 'health') name = 'healthlog';
+  if (state.view === 'scan' && name !== 'scan'){
+    stopCamera();
+  }
+  if (name === 'scan'){
+    state.photoDataUrl = null;
+    state.extracted = null;
+    state.scanError = null;
+    state.scanErrorDetail = null;
+    state.cameraSupported = null;
+  }
+  state.view = name;
+  render();
+  if (name === 'scan'){
+    startCamera();
+  }
+}
+
+function renderHome(){
+  var entries = buildReminderList();
+  var today = todayKey();
+  var grouped = {};
+  entries.forEach(function(e){
+    if (!grouped[e.time]) grouped[e.time] = [];
+    grouped[e.time].push(e);
+  });
+  var times = Object.keys(grouped).sort();
+  var rows = times.map(function(t){
+    var groupRows = grouped[t].map(function(e){
+      var c = MED_COLORS[e.med.color % MED_COLORS.length];
+      var key = e.med.id + '_' + e.time + '_' + today;
+      var isTaken = !!state.takenLog[key];
+      var isDue = !isTaken && e.time <= nowHHMM();
+      var expired = isExpired(e.med);
+      var badgeClass = expired ? 'expired' : (isTaken ? 'taken' : (isDue ? 'due' : 'upcoming'));
+      var badgeText = expired ? 'Expired' : (isTaken ? ('Taken at ' + formatTime(state.takenLog[key])) : (isDue ? 'Due now' : 'Upcoming'));
+      var iconColor = expired ? '#8A97A6' : c.fg;
+      var iconBg = expired ? '#EDEFF2' : c.bg;
+      var actionOrNote = expired
+        ? '<p class="expiry-note">This prescription expired '+escapeHtml(expiryLabel(e.med.expiryDate))+'. Please don\'t take it — check with your pharmacist about disposal and a refill.</p>'
+        : (isTaken ? '' : '<div class="row-actions"><button class="btn btn-secondary btn-small" onclick="markTaken('+e.med.id+',\''+e.time+'\')">Mark as taken</button>' +
+            (e.med.boxId ? '<button class="btn btn-secondary btn-small" onclick="openBox('+e.med.id+')">Open box '+e.med.boxId+'</button>' : '') +
+          '</div>');
+      return '<div class="card'+(expired?' expired-card':'')+'"><div class="med-row">' +
+        '<div class="pill-icon" style="background:'+iconBg+';color:'+iconColor+';">'+iconPill(22, iconColor)+'</div>' +
+        '<div style="flex:1;">' +
+          '<p class="med-name">'+escapeHtml(e.med.name)+'</p>' +
+          '<p class="med-meta">'+escapeHtml(e.med.dosage)+'</p>' +
+          '<span class="badge '+badgeClass+'">'+badgeText+'</span>' +
+          pillMeterHtml(e.med) +
+          (e.med.expiryDate ? '<p class="expiry-line">Expires '+escapeHtml(expiryLabel(e.med.expiryDate))+'</p>' : '') +
+          actionOrNote +
+        '</div>' +
+      '</div></div>';
+    }).join('');
+    return '<h3 class="time-header">'+formatTime(t)+'</h3>' + groupRows;
+  }).join('');
+
+  if (entries.length === 0){
+    rows = '<div class="card center-pad"><p class="lede" style="margin:0;">No scheduled medications yet. Scan one to get started.</p></div>';
+  }
+
+  var doneToday = !!state.checkinLog[today];
+  var checkinCard;
+  if (doneToday){
+    var log = state.checkinLog[today];
+    checkinCard = '<div class="card"><div class="med-row">' +
+      '<div class="pill-icon" style="background:var(--good-bg);color:var(--good-fg);">'+iconPill(22,'#1F6B49')+'</div>' +
+      '<div style="flex:1;"><p class="med-name">Daily check-in complete</p>' +
+      '<p class="med-meta">'+escapeHtml(log.summary)+'</p>' +
+      '<span class="severity-tag severity-'+log.severity+'">'+log.severity.charAt(0).toUpperCase()+log.severity.slice(1)+'</span>' +
+      '<div class="row-actions"><button class="btn btn-secondary btn-small" onclick="openCheckin()">Check in again</button></div>' +
+      '</div></div></div>';
+  } else {
+    checkinCard = '<div class="card"><div class="med-row">' +
+      '<div class="pill-icon" style="background:var(--primary-light);color:var(--primary-dark);">'+iconPill(22,'#0E3F73')+'</div>' +
+      '<div style="flex:1;"><p class="med-name">Daily check-in</p>' +
+      '<p class="med-meta">Not done yet today. Takes about a minute.</p>' +
+      '<div class="row-actions"><button class="btn btn-secondary btn-small" onclick="openCheckin()">Start check-in</button></div>' +
+      '</div></div></div>';
+  }
+
+  var prnMeds = state.meds.filter(function(m){ return m.type === 'prn'; });
+  var prnHtml = '';
+  if (prnMeds.length){
+    prnHtml += '<h3 style="font-size:0.95rem; margin:18px 0 8px; color:var(--text-secondary);">As-needed medications</h3>';
+    prnHtml += prnMeds.map(function(med){
+      var c = MED_COLORS[med.color % MED_COLORS.length];
+      var doses = getPrnDosesToday(med.id);
+      var lastDose = doses.length ? formatTime(doses[doses.length-1]) : null;
+      var statusText = doses.length
+        ? (doses.length + ' of ' + med.prnMax + ' doses today · last at ' + lastDose)
+        : ('0 of ' + med.prnMax + ' doses today');
+      var expired = isExpired(med);
+      var iconColor = expired ? '#8A97A6' : c.fg;
+      var iconBg = expired ? '#EDEFF2' : c.bg;
+      var actionOrNote = expired
+        ? '<p class="expiry-note">This medication expired '+escapeHtml(expiryLabel(med.expiryDate))+'. Please don\'t take it — check with your pharmacist about disposal and a refill.</p>'
+        : '<div class="row-actions"><button class="btn btn-secondary btn-small" onclick="logPrnDose('+med.id+')">Log a dose now</button>' +
+            (med.boxId ? '<button class="btn btn-secondary btn-small" onclick="openBox('+med.id+')">Open box '+med.boxId+'</button>' : '') +
+          '</div>';
+      return '<div class="card'+(expired?' expired-card':'')+'"><div class="med-row">' +
+        '<div class="pill-icon" style="background:'+iconBg+';color:'+iconColor+';">'+iconPill(22,iconColor)+'</div>' +
+        '<div style="flex:1;">' +
+          '<p class="med-name">'+escapeHtml(med.name)+'</p>' +
+          '<p class="med-meta">'+escapeHtml(med.dosage)+' · '+escapeHtml(med.instructions)+'</p>' +
+          '<p class="med-meta" style="margin-top:4px;">'+(expired ? 'Expired' : statusText)+'</p>' +
+          pillMeterHtml(med) +
+          (med.expiryDate ? '<p class="expiry-line">Expires '+escapeHtml(expiryLabel(med.expiryDate))+'</p>' : '') +
+          actionOrNote +
+        '</div></div></div>';
+    }).join('');
+  }
+
+  document.getElementById('screen').innerHTML =
+    '<h2 class="title">'+greeting()+'</h2>' +
+    '<p class="lede">Here is your schedule for today.</p>' +
+    checkinCard +
+    rows +
+    prnHtml +
+    '<div class="fab-wrap"><button class="btn btn-primary" onclick="goView(\'scan\')">+ Scan a new medication</button></div>';
+}
+
+function renderScan(){
+  if (state.cameraSupported === false){
+    document.getElementById('screen').innerHTML =
+      '<div class="camera-wrap">' +
+        '<div class="cam-placeholder"></div>' +
+        '<div class="cam-overlay">' +
+          '<button class="cam-close" onclick="goView(\'home\')">×</button>' +
+          '<div class="cam-caption">Position medication in the frame</div>' +
+          '<div class="cam-frame"></div>' +
+          '<div class="cam-fallback-card">' +
+            '<p class="med-meta" style="margin:0 0 12px;">Camera preview isn\'t available here, so use your device camera or photo library instead.</p>' +
+            '<button class="btn btn-primary" onclick="document.getElementById(\'cameraInput\').click()">Take a photo</button>' +
+            '<div style="height:8px;"></div>' +
+            '<button class="btn btn-secondary" onclick="document.getElementById(\'galleryInput\').click()">Choose a photo I already have</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    return;
+  }
+  document.getElementById('screen').innerHTML =
+    '<div class="camera-wrap">' +
+      (state.cameraSupported ? '<video id="cameraPreview" autoplay playsinline muted></video>' : '<div class="cam-placeholder"></div>') +
+      '<div class="cam-overlay">' +
+        '<button class="cam-close" onclick="goView(\'home\')">×</button>' +
+        '<div class="cam-caption">Position medication in the frame</div>' +
+        '<div class="cam-frame"></div>' +
+        '<div class="cam-controls">' +
+          (state.cameraSupported ? '<button class="shutter-btn" onclick="captureFromVideo()" aria-label="Take photo"></button>' : '<div class="spin" style="border-color:rgba(255,255,255,0.25); border-top-color:#fff;"></div>') +
+        '</div>' +
+        '<button class="btn btn-ghost" style="color:#fff; margin-top:4px;" onclick="document.getElementById(\'galleryInput\').click()">Or choose a photo you already have</button>' +
+      '</div>' +
+    '</div>';
+  if (mediaStream){
+    var v = document.getElementById('cameraPreview');
+    if (v) v.srcObject = mediaStream;
+  }
+}
+
+function renderAnalyzing(){
+  document.getElementById('screen').innerHTML =
+    '<div class="center-pad">' +
+      '<div class="spin"></div>' +
+      '<p class="lede" style="margin:0;">Reading the label…</p>' +
+    '</div>';
+}
+
+var mediaStream = null;
+function startCamera(){
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    state.cameraSupported = false;
+    renderScan();
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function(stream){
+    mediaStream = stream;
+    state.cameraSupported = true;
+    renderScan();
+  }).catch(function(){
+    state.cameraSupported = false;
+    renderScan();
+  });
+}
+function stopCamera(){
+  if (mediaStream){
+    mediaStream.getTracks().forEach(function(t){ t.stop(); });
+    mediaStream = null;
+  }
+}
+function captureFromVideo(){
+  var v = document.getElementById('cameraPreview');
+  if (!v) return;
+  var canvas = document.createElement('canvas');
+  canvas.width = v.videoWidth || 480;
+  canvas.height = v.videoHeight || 640;
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+  var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  stopCamera();
+  state.photoDataUrl = dataUrl;
+  state.photoMime = 'image/jpeg';
+  state.view = 'analyzing';
+  render();
+  analyzePhoto(dataUrl, 'image/jpeg');
+}
+
+function renderConfirm(){
+  var ex = state.extracted || { name: '', dosage: '', instructions: '', selectedTimes: [], type: 'scheduled', prnMax: 4, boxId: null };
+  if (!ex.type) ex.type = 'scheduled';
+  if (!ex.prnMax) ex.prnMax = 4;
+  var notice;
+  if (state.scanError === 'nokey'){
+    notice = '<div class="notice">No Anthropic API key is set, so the photo couldn\'t be read automatically. Add one in Settings, or just fill in the details below by hand.</div>';
+  } else if (state.scanError){
+    var detail = state.scanErrorDetail ? (' (' + escapeHtml(state.scanErrorDetail) + ')') : '';
+    notice = '<div class="notice">We had trouble reading the label automatically'+detail+'. Please check or fill in the details below.</div>';
+  } else {
+    notice = '<div class="notice" style="background:var(--good-bg); color:var(--good-fg);">Here is what we found. Please check it over before saving.</div>';
+  }
+
+  var chipRow = SCHEDULE_PRESETS.map(function(p){
+    var selected = ex.selectedTimes.indexOf(p.time) !== -1;
+    return '<button class="chip '+(selected?'selected':'')+'" onclick="toggleTime(\''+p.time+'\')">'+p.label+' · '+formatTime(p.time)+'</button>';
+  }).join('');
+
+  var customChips = ex.selectedTimes.filter(function(t){
+    return SCHEDULE_PRESETS.findIndex(function(p){return p.time===t;}) === -1;
+  }).map(function(t){
+    return '<span class="chip removable">'+formatTime(t)+' <span onclick="toggleTime(\''+t+'\')" style="cursor:pointer; font-weight:700;">×</span></span>';
+  }).join('');
+
+  var scheduleSection = ex.type === 'prn'
+    ? ('<label class="field-label">Maximum doses per day</label>' +
+       '<input type="text" id="f-prnmax" value="'+escapeAttr(String(ex.prnMax))+'" inputmode="numeric">' +
+       '<p class="disclaimer">We will track how many doses are logged today against this number — the same as what is printed on the label.</p>')
+    : ('<label class="field-label">When should we remind you?</label>' +
+       '<div class="chip-row">'+chipRow+customChips+'</div>' +
+       '<div style="margin-top:12px; display:flex; gap:8px; align-items:center;">' +
+         '<input type="time" id="f-customtime" style="flex:1; border:1px solid var(--border); border-radius:12px; padding:10px; font-family:inherit; font-size:0.95rem;">' +
+         '<button class="btn btn-secondary btn-small" onclick="addCustomTime()">Add time</button>' +
+       '</div>');
+
+  document.getElementById('screen').innerHTML =
+    '<h2 class="title">Confirm details</h2>' +
+    (state.photoDataUrl ? '<div class="photo-frame"><img src="'+state.photoDataUrl+'" alt="Photo of medication label"></div>' : '') +
+    notice +
+    '<label class="field-label">Medication name</label>' +
+    '<input type="text" id="f-name" value="'+escapeAttr(ex.name)+'">' +
+    '<label class="field-label">Dosage / strength</label>' +
+    '<input type="text" id="f-dosage" value="'+escapeAttr(ex.dosage)+'">' +
+    '<label class="field-label">Instructions</label>' +
+    '<textarea id="f-instructions">'+escapeHtml(ex.instructions)+'</textarea>' +
+    '<label class="field-label">How is this taken?</label>' +
+    '<div class="chip-row">' +
+      '<button class="chip '+(ex.type==='scheduled'?'selected':'')+'" onclick="setMedType(\'scheduled\')">On a schedule</button>' +
+      '<button class="chip '+(ex.type==='prn'?'selected':'')+'" onclick="setMedType(\'prn\')">As needed for pain</button>' +
+    '</div>' +
+    '<div style="margin-top:6px;"></div>' +
+    scheduleSection +
+    '<label class="field-label">How many pills does this prescription include?</label>' +
+    '<input type="text" id="f-pillstotal" value="'+escapeAttr(ex.pillsTotal ? String(ex.pillsTotal) : '')+'" inputmode="numeric" placeholder="e.g. 30">' +
+    '<p class="disclaimer">We\'ll show a little meter on the home screen that counts down as you take doses, and let you know when it\'s time to refill.</p>' +
+    '<label class="field-label">Expiration date</label>' +
+    '<input type="date" id="f-expiry" value="'+escapeAttr(ex.expiryDate || '')+'">' +
+    '<label class="field-label">Which box does this go in?</label>' +
+    '<div class="chip-row">'+boxChipRow(ex.boxId)+'</div>' +
+    '<p class="disclaimer">This tells the pill dispenser which servo to open when you tap "Open box" for this medication.</p>' +
+    '<div class="fab-wrap"><button class="btn btn-primary" onclick="saveMedication()">Save medication</button></div>';
+}
+
+function boxChipRow(selectedBoxId){
+  var chips = '';
+  for (var i = 1; i <= DISPENSER_BOX_COUNT; i++){
+    chips += '<button class="chip '+(selectedBoxId===i?'selected':'')+'" onclick="setBoxId('+i+')">Box '+i+'</button>';
+  }
+  chips += '<button class="chip '+(!selectedBoxId?'selected':'')+'" onclick="setBoxId(null)">No box</button>';
+  return chips;
+}
+
+function setBoxId(id){
+  state.extracted.boxId = id;
+  render();
+}
+
+function renderSettings(){
+  var swatches = Object.keys(THEMES).map(function(key){
+    var t = THEMES[key];
+    return '<button class="swatch '+(state.theme===key?'active':'')+'" style="background:'+t.swatch+';" onclick="applyTheme(\''+key+'\')" aria-label="'+t.label+'"></button>';
+  }).join('');
+
+  var notifBlock;
+  if (state.notifPermission === 'granted'){
+    notifBlock = '<div class="notif-status granted">Notifications are turned on. Reminders will appear as real notifications on this device.</div>';
+  } else if (state.notifPermission === 'denied'){
+    notifBlock = '<div class="notif-status blocked">Notifications are blocked. You will need to allow them in your browser\'s site settings to get real alerts.</div>';
+  } else if (state.notifPermission === 'unsupported'){
+    notifBlock = '<div class="notif-status blocked">This browser or preview does not support real notifications. We will show the reminder screen directly instead.</div>';
+  } else {
+    notifBlock = '<div class="notif-status pending">Notifications aren\'t turned on yet.</div>' +
+      '<button class="btn btn-secondary" onclick="requestNotifPermission()">Enable notifications</button>';
+  }
+
+  document.getElementById('screen').innerHTML =
+    '<h2 class="title">Settings</h2>' +
+    '<div class="settings-section">' +
+      '<h3>App color</h3>' +
+      '<div class="swatch-row">'+swatches+'</div>' +
+    '</div>' +
+    '<div class="settings-section">' +
+      '<h3>Text size</h3>' +
+      '<div class="size-row">' +
+        '<button class="chip '+(state.textSize==='standard'?'selected':'')+'" onclick="setTextSize(\'standard\')">Standard</button>' +
+        '<button class="chip '+(state.textSize==='large'?'selected':'')+'" onclick="setTextSize(\'large\')">Large</button>' +
+        '<button class="chip '+(state.textSize==='xl'?'selected':'')+'" onclick="setTextSize(\'xl\')">Extra large</button>' +
+      '</div>' +
+    '</div>' +
+    apiKeySectionHtml() +
+    '<div class="settings-section">' +
+      '<h3>Notifications</h3>' +
+      notifBlock +
+      '<div class="toggle-row"><span>Let a family member see missed doses</span>' +
+        '<div class="switch '+(state.caregiverAlerts?'on':'')+'" onclick="toggleCaregiver()"><div class="knob"></div></div>' +
+      '</div>' +
+      '<div class="toggle-row"><span>Have the daily check-in speak out loud</span>' +
+        '<div class="switch '+(state.voiceEnabled?'on':'')+'" onclick="toggleVoice()"><div class="knob"></div></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="settings-section">' +
+      '<h3>Try it out</h3>' +
+      '<p class="lede">These trigger a real notification right now if permission is on, so you can see what your phone would show.</p>' +
+      '<button class="btn btn-secondary" onclick="sendTestReminder()">Send a test medication reminder</button>' +
+      '<div style="height:10px;"></div>' +
+      '<button class="btn btn-secondary" onclick="sendCheckinNotification()">Send today\'s check-in notification</button>' +
+    '</div>' +
+    dispenserSectionHtml();
+}
+
+function apiKeySectionHtml(){
+  var hasKey = !!state.apiKey;
+  var masked = hasKey ? (state.apiKey.slice(0,10) + '…' + state.apiKey.slice(-4)) : '';
+  var status = hasKey
+    ? '<div class="notif-status granted">Key saved ('+escapeHtml(masked)+'). Automatic label reading and the daily check-in chat are active.</div>'
+    : '<div class="notif-status pending">No key set yet. Scanning a label will just open a blank form to fill in by hand, and the check-in chat won\'t be able to reply.</div>';
+  return '<div class="settings-section">' +
+    '<h3>AI label reading</h3>' +
+    '<p class="lede">Reading pill bottle photos and running the daily check-in chat both call the Anthropic API directly from this browser. Add your own API key to turn them on.</p>' +
+    status +
+    '<label class="field-label">Anthropic API key</label>' +
+    '<input type="password" id="f-apikey" placeholder="sk-ant-…" value="" autocomplete="off">' +
+    '<div style="height:10px;"></div>' +
+    '<button class="btn btn-secondary" onclick="saveApiKey()">Save key</button>' +
+    (hasKey ? '<div style="height:8px;"></div><button class="btn btn-ghost" onclick="clearApiKey()">Remove saved key</button>' : '') +
+    '<p class="disclaimer" style="margin-top:10px;">Get a key at console.anthropic.com. It\'s stored only in this browser (never sent anywhere but Anthropic\'s API), but anyone with access to this device or its saved browser data could read it — don\'t use this on a shared or public computer.</p>' +
+  '</div>';
+}
+
+function dispenserSectionHtml(){
+  var d = state.dispenser;
+  var status, action;
+  var inFrame = (window.self !== window.top);
+  var secure = (window.isSecureContext !== false);
+  if (!d.supported){
+    status = '<div class="notif-status blocked">This browser doesn\'t support connecting to a dispenser. Use Chrome or Edge on a computer.</div>';
+    action = '';
+  } else if (inFrame){
+    status = '<div class="notif-status blocked">This page is running inside a preview frame, which blocks device access. Download the .html file and open it in its own browser tab.</div>';
+    action = '';
+  } else if (!secure){
+    status = '<div class="notif-status blocked">This page isn\'t in a secure context. Open the saved .html file directly.</div>';
+    action = '';
+  } else if (d.connected){
+    status = '<div class="notif-status granted">Connected'+(d.label ? (' — ' + escapeHtml(d.label)) : '')+'. "Open box" buttons on the home screen will now move the servos.</div>';
+    action = '<button class="btn btn-secondary" onclick="disconnectDispenser()">Disconnect</button>';
+  } else if (d.connecting){
+    status = '<div class="notif-status pending">Waiting for you to choose the device…</div>';
+    action = '';
+  } else {
+    status = '<div class="notif-status pending">Not connected yet.</div>';
+    action = '<button class="btn btn-secondary" onclick="connectDispenser()">Connect to dispenser</button>';
+  }
+  var lastAction = d.lastAction ? '<p class="disclaimer" style="margin-top:8px;">'+escapeHtml(d.lastAction)+'</p>' : '';
+  var logHtml = '';
+  if (d.log && d.log.length){
+    var rows = d.log.slice().reverse().map(function(entry){
+      return '<div class="dispenser-log-row"><span class="dispenser-log-time">'+escapeHtml(entry.time)+'</span> ' +
+        '<span class="dispenser-log-text">'+escapeHtml(entry.text)+'</span></div>';
+    }).join('');
+    logHtml = '<p class="field-label" style="margin-top:14px;">Activity log</p><div class="dispenser-log">' + rows + '</div>';
+  }
+  return '<div class="settings-section">' +
+    '<h3>Pill dispenser</h3>' +
+    '<p class="lede">Connect the Arduino over USB so "Open box" buttons on the home screen can move the servos.</p>' +
+    status +
+    action +
+    lastAction +
+    logHtml +
+  '</div>';
+}
+
+function renderOverlay(){
+  var slot = document.getElementById('overlaySlot');
+  if (state.activeAlert){
+    var a = state.activeAlert;
+    var statusText = a.real ? 'Sent as a real notification' : "Notifications aren't available in this preview — opened directly";
+    var statusClass = a.real ? 'granted' : 'blocked';
+    slot.innerHTML =
+      '<div class="alarm-overlay">' +
+        '<div class="notif-status '+statusClass+'" style="background:rgba(255,255,255,0.14); color:#fff;">'+statusText+'</div>' +
+        '<p class="alarm-time">'+formatTime(a.time)+'</p>' +
+        '<p class="alarm-name">'+escapeHtml(a.med.name)+'</p>' +
+        '<p class="alarm-meta">'+escapeHtml(a.med.dosage)+'</p>' +
+        '<button class="alarm-take" onclick="resolveAlert(true)">Take</button>' +
+        '<button class="alarm-delay" onclick="resolveAlert(false)">Delay 10 minutes</button>' +
+      '</div>';
+    return;
+  }
+  slot.innerHTML = '';
+}
+
+function fireNotification(title, body, onClickCallback){
+  if (!('Notification' in window)) return false;
+  if (Notification.permission !== 'granted') return false;
+  try {
+    var n = new Notification(title, { body: body });
+    n.onclick = function(){
+      try { window.focus(); } catch(e){}
+      onClickCallback();
+      n.close();
+    };
+    return true;
+  } catch(e){
+    return false;
+  }
+}
+
+function requestNotifPermission(){
+  if (!('Notification' in window)){
+    state.notifPermission = 'unsupported';
+    render();
+    return;
+  }
+  Notification.requestPermission().then(function(perm){
+    state.notifPermission = perm;
+    render();
+  });
+}
+
+function escapeHtml(s){
+  return String(s || '').replace(/[&<>"']/g, function(c){
+    return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+  });
+}
+function escapeAttr(s){ return escapeHtml(s); }
+
+function markTaken(medId, time){
+  var key = medId + '_' + time + '_' + todayKey();
+  state.takenLog[key] = nowHHMM();
+  var med = state.meds.filter(function(m){ return m.id === medId; })[0];
+  if (med && typeof med.pillsRemaining === 'number' && !isExpired(med)){
+    med.pillsRemaining = Math.max(0, med.pillsRemaining - 1);
+  }
+  render();
+}
+
+function toggleTime(t){
+  var ex = state.extracted;
+  var idx = ex.selectedTimes.indexOf(t);
+  if (idx === -1) ex.selectedTimes.push(t); else ex.selectedTimes.splice(idx, 1);
+  render();
+}
+function addCustomTime(){
+  var v = document.getElementById('f-customtime').value;
+  if (!v) return;
+  if (state.extracted.selectedTimes.indexOf(v) === -1){
+    state.extracted.selectedTimes.push(v);
+  }
+  render();
+}
+function setTextSize(size){
+  state.textSize = size;
+  document.documentElement.setAttribute('data-size', size);
+  render();
+}
+function toggleCaregiver(){
+  state.caregiverAlerts = !state.caregiverAlerts;
+  render();
+}
+function toggleVoice(){
+  state.voiceEnabled = !state.voiceEnabled;
+  render();
+}
+function sendCheckinNotification(){
+  var sent = fireNotification('MedClear', "Daily check-in: how are you feeling today?", function(){
+    openCheckin(false);
+  });
+  if (!sent){
+    openCheckin(true);
+  }
+}
+
+function setMedType(type){
+  state.extracted.type = type;
+  render();
+}
+
+function saveMedication(){
+  var name = document.getElementById('f-name').value.trim();
+  if (!name){
+    alert('Please enter the medication name before saving.');
+    return;
+  }
+  var dosage = document.getElementById('f-dosage').value.trim();
+  var instructions = document.getElementById('f-instructions').value.trim();
+  var type = state.extracted.type || 'scheduled';
+  var med = {
+    id: state.nextId++,
+    name: name,
+    dosage: dosage,
+    instructions: instructions,
+    type: type,
+    color: state.meds.length
+  };
+  if (type === 'prn'){
+    var maxEl = document.getElementById('f-prnmax');
+    var maxVal = maxEl ? parseInt(maxEl.value, 10) : 4;
+    med.prnMax = (maxVal && maxVal > 0) ? maxVal : 4;
+    med.times = [];
+  } else {
+    med.times = state.extracted.selectedTimes.length ? state.extracted.selectedTimes.slice() : ['08:00'];
+  }
+  var pillsTotalEl = document.getElementById('f-pillstotal');
+  var pillsTotalVal = pillsTotalEl ? parseInt(pillsTotalEl.value, 10) : NaN;
+  if (pillsTotalVal && pillsTotalVal > 0){
+    med.pillsTotal = pillsTotalVal;
+    med.pillsRemaining = pillsTotalVal;
+  }
+  var expiryEl = document.getElementById('f-expiry');
+  if (expiryEl && expiryEl.value){
+    med.expiryDate = expiryEl.value;
+  }
+  med.boxId = state.extracted.boxId || null;
+  state.meds.push(med);
+  state.view = 'home';
+  render();
+}
+
+function sendTestReminder(){
+  var med = state.meds.filter(function(m){ return m.type !== 'prn'; })[0];
+  if (!med) return;
+  var time = med.times[0];
+  var sent = fireNotification('MedClear', med.name + ' ' + med.dosage + ' is due now.', function(){
+    state.activeAlert = { med: med, time: time, real: true };
+    render();
+  });
+  if (!sent){
+    state.activeAlert = { med: med, time: time, real: false };
+    render();
+  }
+}
+
+function resolveAlert(taken){
+  var a = state.activeAlert;
+  if (taken){
+    markTaken(a.med.id, a.time);
+  }
+  state.activeAlert = null;
+  render();
+}
+
+function checkReminders(){
+  if (state.activeAlert) return;
+  var now = nowHHMM();
+  var today = todayKey();
+  for (var i = 0; i < state.meds.length; i++){
+    var med = state.meds[i];
+    for (var j = 0; j < med.times.length; j++){
+      var t = med.times[j];
+      var fireKey = med.id + '_' + t + '_' + today;
+      var takenKey = fireKey;
+      if (t === now && !state.firedKeys[fireKey] && !state.takenLog[takenKey]){
+        state.firedKeys[fireKey] = true;
+        (function(med, t){
+          var sent = fireNotification('MedClear', med.name + ' ' + med.dosage + ' is due now.', function(){
+            state.activeAlert = { med: med, time: t, real: true };
+            render();
+          });
+          if (!sent){
+            state.activeAlert = { med: med, time: t, real: false };
+            render();
+          }
+        })(med, t);
+        return;
+      }
+    }
+  }
+}
+setInterval(checkReminders, 15000);
+
+function readFileAsDataUrl(file){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(){ resolve(reader.result); };
+    reader.onerror = function(){ reject(new Error('read failed')); };
+    reader.readAsDataURL(file);
+  });
+}
+
+function handleSelectedFile(file){
+  if (!file) return;
+  stopCamera();
+  state.photoMime = file.type || 'image/jpeg';
+  readFileAsDataUrl(file).then(function(dataUrl){
+    state.photoDataUrl = dataUrl;
+    state.view = 'analyzing';
+    render();
+    return analyzePhoto(dataUrl, state.photoMime);
+  }).catch(function(){
+    state.scanError = true;
+    state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null };
+    state.view = 'confirm';
+    render();
+  });
+}
+
+document.getElementById('cameraInput').addEventListener('change', function(e){
+  handleSelectedFile(e.target.files[0]);
+  e.target.value = '';
+});
+document.getElementById('galleryInput').addEventListener('change', function(e){
+  handleSelectedFile(e.target.files[0]);
+  e.target.value = '';
+});
+
+function analyzePhoto(dataUrl, mime){
+  if (!state.apiKey){
+    state.scanError = 'nokey';
+    state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null };
+    state.view = 'confirm';
+    render();
+    return Promise.resolve();
+  }
+  var base64 = dataUrl.split(',')[1];
+  var prompt = 'You are looking at a photo of a medication bottle, box, or blister pack. ' +
+    'Identify the medication name, the strength or dosage printed on the label, and the dosing ' +
+    'instructions (such as how many times a day and any timing notes). ' +
+    'Respond with ONLY a JSON object and nothing else, no markdown fences, in exactly this shape: ' +
+    '{"name":"...","dosage":"...","instructions":"...","suggestedTimes":["08:00","20:00"]}. ' +
+    'suggestedTimes should be 24-hour HH:MM strings reflecting how many times a day the label says to take it, ' +
+    'spaced sensibly through waking hours. If a field is not clearly legible, make your best reasonable guess.';
+
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: anthropicHeaders(),
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 1000,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mime, data: base64 } },
+          { type: 'text', text: prompt }
+        ]
+      }]
+    })
+  }).then(function(res){
+    if (!res.ok){
+      return res.json().catch(function(){ return null; }).then(function(errBody){
+        var msg = (errBody && errBody.error && errBody.error.message) || ('HTTP ' + res.status);
+        throw new Error(msg);
+      });
+    }
+    return res.json();
+  }).then(function(data){
+    var textBlock = (data.content || []).find(function(c){ return c.type === 'text'; });
+    var raw = textBlock ? textBlock.text : '';
+    var cleaned = raw.replace(/```json|```/g, '').trim();
+    var parsed;
+    try { parsed = JSON.parse(cleaned); } catch (err) { parsed = null; }
+    if (!parsed || !parsed.name){
+      state.scanError = true;
+      state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null };
+    } else {
+      state.scanError = false;
+      state.extracted = {
+        name: parsed.name || '',
+        dosage: parsed.dosage || '',
+        instructions: parsed.instructions || '',
+        selectedTimes: Array.isArray(parsed.suggestedTimes) && parsed.suggestedTimes.length ? parsed.suggestedTimes : ['08:00'],
+        type: 'scheduled',
+        prnMax: 4,
+        pillsTotal: '',
+        expiryDate: '',
+        boxId: null
+      };
+    }
+    state.view = 'confirm';
+    render();
+  }).catch(function(err){
+    console.error('[analyzePhoto]', err);
+    state.scanError = true;
+    state.scanErrorDetail = (err && err.message) || String(err);
+    state.extracted = { name:'', dosage:'', instructions:'', selectedTimes:[], type:'scheduled', prnMax:4, pillsTotal:'', expiryDate:'', boxId:null };
+    state.view = 'confirm';
+    render();
+  });
+}
+
+var CHECKIN_SYSTEM_PROMPT = 'You are a warm, patient daily wellness check-in companion inside a medication reminder app for an older adult. ' +
+  'Your only job right now is to ask in simple, short, conversational sentences (1-3 sentences per turn, easy to read or hear aloud) whether they are having any pain or discomfort today. ' +
+  'If they mention pain, ask at most one or two gentle follow-up questions to get a general sense of where it is and how it feels (mild, moderate, or severe) - keep it conversational, not like a form. ' +
+  'Never diagnose, never suggest or name a specific medication, dose, or treatment, and never speculate about a medical cause. ' +
+  'You can acknowledge that the app keeps a log of what they share and that it can show their as-needed medication information after the check-in, but you personally should not decide whether they should take anything. ' +
+  'If they say they feel fine, respond warmly and briefly. Keep the whole exchange short - usually 2 to 4 of their replies is enough, then gently suggest wrapping up.';
+
+var CHECKIN_SUMMARY_PROMPT = 'Based on the conversation so far, output ONLY a JSON object, no other text, no markdown fences, in exactly this shape: ' +
+  '{"severity":"none|mild|moderate|severe","summary":"one short, plain, factual sentence describing what they reported, written in third person for a medical note"}. ' +
+  'Base the severity on what they described, defaulting to "none" if they reported no pain or discomfort.';
+
+function getApiMessages(){
+  var msgs = state.checkin.messages;
+  var idx = -1;
+  for (var i = 0; i < msgs.length; i++){ if (msgs[i].role === 'user'){ idx = i; break; } }
+  if (idx === -1) return [];
+  return msgs.slice(idx).map(function(m){ return { role: m.role, content: m.text }; });
+}
+
+function callClaude(system, messages, maxTokens){
+  if (!state.apiKey){
+    return Promise.reject(new Error('No API key set'));
+  }
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: anthropicHeaders(),
+    body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: maxTokens || 300, system: system, messages: messages })
+  }).then(function(res){
+    if (!res.ok){
+      return res.json().catch(function(){ return null; }).then(function(errBody){
+        var msg = (errBody && errBody.error && errBody.error.message) || ('HTTP ' + res.status);
+        throw new Error(msg);
+      });
+    }
+    return res.json();
+  }).then(function(data){
+    var block = (data.content || []).find(function(c){ return c.type === 'text'; });
+    return block ? block.text : '';
+  });
+}
+
+function openCheckin(isFallback){
+  var opening = 'Hi! This is your daily check-in. Are you having any pain or discomfort today?';
+  if (isFallback) opening = "(Notifications aren't available in this preview, so this opened directly.) " + opening;
+  state.checkin = { messages: [{ role: 'assistant', text: opening }], ended: false, busy: false };
+  state.checkinResult = null;
+  state.view = 'checkin';
+  render();
+  speakText(state.checkin.messages[0].text);
+}
+
+function sendCheckinMessage(){
+  var box = document.getElementById('f-checkin-input');
+  var text = box ? box.value.trim() : '';
+  if (!text || state.checkin.busy) return;
+  state.checkin.messages.push({ role: 'user', text: text });
+  state.checkin.busy = true;
+  render();
+  callClaude(CHECKIN_SYSTEM_PROMPT, getApiMessages(), 300).then(function(text){
+    var reply = text || "Thanks for telling me that.";
+    state.checkin.messages.push({ role: 'assistant', text: reply });
+    state.checkin.busy = false;
+    render();
+    speakText(reply);
+  }).catch(function(){
+    state.checkin.messages.push({ role: 'assistant', text: "Sorry, I had trouble connecting just now. You can try again, or finish the check-in below." });
+    state.checkin.busy = false;
+    render();
+  });
+}
+
+function endCheckin(){
+  if (state.checkin.busy) return;
+  state.checkin.busy = true;
+  render();
+  var apiMsgs = getApiMessages();
+  if (apiMsgs.length === 0){
+    finishCheckin('none', 'No pain or discomfort reported today.');
+    return;
+  }
+  callClaude(CHECKIN_SUMMARY_PROMPT, apiMsgs, 200).then(function(text){
+    var cleaned = (text || '').replace(/```json|```/g, '').trim();
+    var parsed;
+    try { parsed = JSON.parse(cleaned); } catch (e) { parsed = null; }
+    var severity = (parsed && parsed.severity) || 'mild';
+    var summary = (parsed && parsed.summary) || 'Reported some discomfort today.';
+    finishCheckin(severity, summary);
+  }).catch(function(){
+    finishCheckin('mild', 'Reported some discomfort today; could not generate a full summary.');
+  });
+}
+
+function finishCheckin(severity, summary){
+  state.checkin.busy = false;
+  state.checkin.ended = true;
+  var today = todayKey();
+  state.checkinLog[today] = { severity: severity, summary: summary };
+  state.healthLog.unshift({ id: Date.now(), dateLabel: todayDateLabel(), severity: severity, text: summary, source: 'checkin' });
+  var relevantPrn = severity !== 'none' ? state.meds.filter(function(m){ return m.type === 'prn'; }) : [];
+  state.checkinResult = { severity: severity, summary: summary, prnMeds: relevantPrn };
+  state.view = 'checkin-result';
+  render();
+  if (severity !== 'none'){
+    speakText("Thanks for sharing that. I've added it to your health notes" + (relevantPrn.length ? ", and I'll show you your as-needed medication details now." : "."));
+  } else {
+    speakText("Glad to hear it. Have a great day!");
+  }
+}
+
+function renderCheckin(){
+  var bubbles = state.checkin.messages.map(function(m){
+    return '<div class="bubble-row '+m.role+'"><div class="bubble '+m.role+'">'+escapeHtml(m.text)+'</div></div>';
+  }).join('');
+  var micButton = SpeechRecognitionSupported()
+    ? ('<button class="mic-btn '+(state.listening?'listening':'')+'" onclick="toggleListening()" aria-label="Speak your answer">' +
+       '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0"/><path d="M12 18v3"/></svg></button>')
+    : '';
+  document.getElementById('screen').innerHTML =
+    '<h2 class="title">Daily check-in</h2>' +
+    '<p class="disclaimer">This is a supportive check-in, not medical care. If this is an emergency, call 911 or your local emergency number.</p>' +
+    '<div class="chat-area" style="margin-top:14px;">'+bubbles+(state.checkin.busy ? '<div class="bubble-row assistant"><div class="bubble assistant">…</div></div>' : '')+'</div>' +
+    '<div class="chat-input-row">' +
+      micButton +
+      '<textarea id="f-checkin-input" placeholder="Type your answer…" onkeydown="if(event.key===\'Enter\' && !event.shiftKey){event.preventDefault(); sendCheckinMessage();}"></textarea>' +
+      '<button class="send-btn" onclick="sendCheckinMessage()" aria-label="Send">' +
+        '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2"><path d="M5 12l14-7-5 14-3-6-6-1z"/></svg>' +
+      '</button>' +
+    '</div>' +
+    '<div style="margin-top:8px;"><button class="btn btn-ghost" onclick="endCheckin()">End check-in</button></div>';
+}
+
+function renderCheckinResult(){
+  var r = state.checkinResult;
+  if (!r){ goView('home'); return; }
+  var prnHtml = '';
+  if (r.prnMeds && r.prnMeds.length){
+    prnHtml += '<h3 style="font-size:0.95rem; margin:18px 0 8px; color:var(--text-secondary);">Your as-needed medication</h3>';
+    prnHtml += r.prnMeds.map(function(med){
+      var c = MED_COLORS[med.color % MED_COLORS.length];
+      var doses = getPrnDosesToday(med.id);
+      var lastDose = doses.length ? formatTime(doses[doses.length-1]) : null;
+      var statusText = doses.length
+        ? (doses.length + ' of ' + med.prnMax + ' doses today · last at ' + lastDose)
+        : ('0 of ' + med.prnMax + ' doses today');
+      return '<div class="card"><div class="med-row">' +
+        '<div class="pill-icon" style="background:'+c.bg+';color:'+c.fg+';">'+iconPill(22,c.fg)+'</div>' +
+        '<div style="flex:1;">' +
+          '<p class="med-name">'+escapeHtml(med.name)+'</p>' +
+          '<p class="med-meta">'+escapeHtml(med.dosage)+' · '+escapeHtml(med.instructions)+'</p>' +
+          '<p class="med-meta" style="margin-top:4px;">'+statusText+'</p>' +
+          '<p class="disclaimer">This is based on the instructions saved for this medication — it is your call whether to take it now.</p>' +
+          '<div class="row-actions"><button class="btn btn-secondary btn-small" onclick="logPrnDose('+med.id+')">I took a dose just now</button></div>' +
+        '</div></div></div>';
+    }).join('');
+  }
+  document.getElementById('screen').innerHTML =
+    '<h2 class="title">Check-in complete</h2>' +
+    '<div class="card"><p class="med-meta" style="margin:0 0 6px;">'+escapeHtml(r.summary)+'</p>' +
+      '<span class="severity-tag severity-'+r.severity+'">'+r.severity.charAt(0).toUpperCase()+r.severity.slice(1)+'</span></div>' +
+    '<p class="disclaimer">This has been added to your health notes. If anything feels different or gets worse, it is worth telling your doctor or a family member.</p>' +
+    prnHtml +
+    '<div class="fab-wrap"><button class="btn btn-primary" onclick="goView(\'home\')">Done</button></div>';
+}
+
+function toggleAddingNote(){
+  state.addingNote = !state.addingNote;
+  render();
+}
+function addManualNote(){
+  var text = document.getElementById('f-note-text').value.trim();
+  var severity = document.getElementById('f-note-severity').value;
+  if (!text) return;
+  state.healthLog.unshift({ id: Date.now(), dateLabel: todayDateLabel(), severity: severity, text: text, source: 'manual' });
+  state.addingNote = false;
+  render();
+}
+
+function renderHealthLog(){
+  var noteForm = state.addingNote
+    ? ('<div class="card">' +
+        '<label class="field-label">What would you like to note?</label>' +
+        '<textarea id="f-note-text" placeholder="Describe how you are feeling…"></textarea>' +
+        '<label class="field-label">How severe does it feel?</label>' +
+        '<select id="f-note-severity"><option value="mild">Mild</option><option value="moderate">Moderate</option><option value="severe">Severe</option></select>' +
+        '<div style="height:10px;"></div>' +
+        '<button class="btn btn-primary" onclick="addManualNote()">Save note</button>' +
+        '<div style="height:8px;"></div>' +
+        '<button class="btn btn-ghost" onclick="toggleAddingNote()">Cancel</button>' +
+      '</div>')
+    : '<button class="btn btn-secondary" onclick="toggleAddingNote()">+ Add a note for your doctor</button>';
+
+  var entries = state.healthLog.map(function(e){
+    return '<div class="card"><p class="med-meta" style="margin:0 0 4px;">'+escapeHtml(e.dateLabel)+'</p>' +
+      '<p class="med-name" style="font-size:0.98rem;">'+escapeHtml(e.text)+'</p>' +
+      '<span class="severity-tag severity-'+e.severity+'">'+e.severity.charAt(0).toUpperCase()+e.severity.slice(1)+'</span> ' +
+      '<span class="source-tag">'+(e.source==='checkin' ? 'From daily check-in' : 'Added manually')+'</span>' +
+    '</div>';
+  }).join('');
+
+  document.getElementById('screen').innerHTML =
+    '<h2 class="title">Health</h2>' +
+    '<p class="lede">Everything you have reported, in one place — easy to show your doctor or a family member.</p>' +
+    noteForm +
+    '<div style="height:6px;"></div>' +
+    (entries || '<div class="card"><p class="med-meta" style="margin:0;">No notes recorded yet.</p></div>') +
+    '<div class="fab-wrap"><button class="btn btn-primary" onclick="window.print()">Print this summary</button></div>';
+}
+
+function SpeechRecognitionSupported(){
+  return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+}
+var recognition = null;
+function toggleListening(){
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
+  if (state.listening){
+    if (recognition) recognition.stop();
+    return;
+  }
+  recognition = new SR();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  recognition.onstart = function(){ state.listening = true; render(); };
+  recognition.onend = function(){ state.listening = false; render(); };
+  recognition.onerror = function(){ state.listening = false; render(); };
+  recognition.onresult = function(event){
+    var transcript = event.results[0][0].transcript;
+    var box = document.getElementById('f-checkin-input');
+    if (box) box.value = transcript;
+  };
+  recognition.start();
+}
+
+function speakText(text){
+  if (!state.voiceEnabled || !('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    var utter = new SpeechSynthesisUtterance(text);
+    utter.rate = 0.95;
+    window.speechSynthesis.speak(utter);
+  } catch (e) { /* speech not available */ }
+}
+
+function renderHistory(){
+  var entries = buildReminderList();
+  var today = todayKey();
+  var totalToday = entries.length;
+  var takenToday = entries.filter(function(e){
+    return !!state.takenLog[e.med.id + '_' + e.time + '_' + today];
+  }).length;
+
+  var mockDays = [
+    { daysAgo: 1, taken: Math.max(totalToday - 1, 0), total: totalToday || 4 },
+    { daysAgo: 2, taken: totalToday || 4, total: totalToday || 4 },
+    { daysAgo: 3, taken: Math.max((totalToday || 4) - 2, 0), total: totalToday || 4 },
+    { daysAgo: 4, taken: totalToday || 4, total: totalToday || 4 }
+  ];
+
+  var rows = '<div class="history-row"><span class="history-date">'+todayDateLabel()+'</span>' +
+    '<span class="history-frac">'+takenToday+' of '+totalToday+' taken'+(totalToday && takenToday===totalToday ? ' ✓' : '')+'</span></div>';
+
+  rows += mockDays.map(function(d){
+    var label = formatWeekdayMonthDay(dateNDaysAgo(d.daysAgo));
+    return '<div class="history-row"><span class="history-date">'+escapeHtml(label)+'</span>' +
+      '<span class="history-frac">'+d.taken+' of '+d.total+' taken'+(d.total && d.taken===d.total ? ' ✓' : '')+'</span></div>';
+  }).join('');
+
+  document.getElementById('screen').innerHTML =
+    '<h2 class="title">Daily history</h2>' +
+    '<p class="lede">How consistently scheduled doses have been taken.</p>' +
+    '<div class="card">'+rows+'</div>' +
+    '<p class="disclaimer">Today\'s numbers are real, based on what you\'ve marked as taken in this session. The earlier days here are illustrative, since this demo doesn\'t store data between visits yet.</p>';
+}
+
+function render(){
+  renderTabbar();
+  if (state.view === 'home') renderHome();
+  else if (state.view === 'scan') renderScan();
+  else if (state.view === 'analyzing') renderAnalyzing();
+  else if (state.view === 'confirm') renderConfirm();
+  else if (state.view === 'settings') renderSettings();
+  else if (state.view === 'checkin') renderCheckin();
+  else if (state.view === 'checkin-result') renderCheckinResult();
+  else if (state.view === 'healthlog') renderHealthLog();
+  else if (state.view === 'history') renderHistory();
+  renderOverlay();
+}
+
+applyTheme(state.theme);
+</script>
+</body>
+</html>
