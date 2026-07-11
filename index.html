@@ -439,6 +439,7 @@ var state = {
   notifPermission: ('Notification' in window) ? Notification.permission : 'unsupported',
   cameraSupported: null,
   apiKey: (function(){ try { return localStorage.getItem('medclear_api_key') || ''; } catch(e){ return ''; } })(),
+  userName: (function(){ try { return localStorage.getItem('medclear_user_name') || ''; } catch(e){ return ''; } })(),
   dispenser: {
     supported: ('serial' in navigator),
     connecting: false,
@@ -476,6 +477,20 @@ function saveApiKey(){
 function clearApiKey(){
   state.apiKey = '';
   try { localStorage.removeItem('medclear_api_key'); } catch(e){ /* ignore */ }
+  render();
+}
+
+function saveUserName(){
+  var el = document.getElementById('f-username');
+  var val = el ? el.value.trim() : '';
+  state.userName = val;
+  try { localStorage.setItem('medclear_user_name', val); } catch(e){ /* ignore storage errors */ }
+  render();
+}
+
+function clearUserName(){
+  state.userName = '';
+  try { localStorage.removeItem('medclear_user_name'); } catch(e){ /* ignore */ }
   render();
 }
 
@@ -725,9 +740,8 @@ function formatTime(hhmm){
 }
 function greeting(){
   var h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+  var base = h < 12 ? 'Good morning' : (h < 17 ? 'Good afternoon' : 'Good evening');
+  return state.userName ? (base + ', ' + escapeHtml(state.userName)) : base;
 }
 function iconPill(size, color){
   return '<svg viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="'+color+'" stroke-width="2"><rect x="3" y="8" width="18" height="9" rx="4.5"/><path d="M9 8v9" stroke="'+color+'" stroke-width="2"/></svg>';
@@ -1222,6 +1236,7 @@ function renderSettings(){
 
   document.getElementById('screen').innerHTML =
     '<h2 class="title">Settings</h2>' +
+    personalInfoSectionHtml() +
     '<div class="settings-section">' +
       '<h3>App color</h3>' +
       '<div class="swatch-row">'+swatches+'</div>' +
@@ -1259,6 +1274,19 @@ function renderSettings(){
       '<button class="btn btn-secondary" onclick="sendCheckinNotification()">Send today\'s check-in notification</button>' +
     '</div>' +
     dispenserSectionHtml();
+}
+
+function personalInfoSectionHtml(){
+  var hasName = !!state.userName;
+  return '<div class="settings-section">' +
+    '<h3>Personal information</h3>' +
+    '<p class="lede">Add your name so the app can greet you personally.</p>' +
+    '<label class="field-label">Your name</label>' +
+    '<input type="text" id="f-username" placeholder="e.g. Sam" value="'+escapeAttr(state.userName)+'" autocomplete="given-name">' +
+    '<div style="height:10px;"></div>' +
+    '<button class="btn btn-secondary" onclick="saveUserName()">Save name</button>' +
+    (hasName ? '<div style="height:8px;"></div><button class="btn btn-ghost" onclick="clearUserName()">Remove name</button>' : '') +
+  '</div>';
 }
 
 function apiKeySectionHtml(){
