@@ -499,6 +499,55 @@
   .welcome-nav{display:flex; gap:10px; margin-top:20px;}
   .welcome-nav .btn{flex:1;}
   .btn-back{background:var(--chip-bg); color:var(--text-secondary); border:1px solid var(--border);}
+
+  /* Motion — every non-essential animation lives inside this block so users
+     who ask the OS for reduced motion get an instant, static UI instead. */
+  @media (prefers-reduced-motion: no-preference){
+    @keyframes rise-in{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;}}
+    @keyframes scale-in{from{opacity:0; transform:scale(0.88);} to{opacity:1; transform:none;}}
+    @keyframes fade-in{from{opacity:0;} to{opacity:1;}}
+    @keyframes slide-in-right{from{opacity:0; transform:translateX(26px);} to{opacity:1; transform:none;}}
+    @keyframes slide-in-left{from{opacity:0; transform:translateX(-26px);} to{opacity:1; transform:none;}}
+    @keyframes glow-drift{0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(-14px,12px) scale(1.1);}}
+    @keyframes ring-fill{from{stroke-dashoffset:var(--ring-circ);}}
+    @keyframes pulse-good{from{box-shadow:0 0 0 0 rgba(31,107,73,0.35);} to{box-shadow:0 0 0 16px rgba(31,107,73,0);}}
+
+    /* Screen content cascades in on view change only (render() gates the class) */
+    .view-enter > *{animation:rise-in 0.34s ease-out backwards;}
+    .view-enter > *:nth-child(2){animation-delay:0.04s;}
+    .view-enter > *:nth-child(3){animation-delay:0.08s;}
+    .view-enter > *:nth-child(4){animation-delay:0.12s;}
+    .view-enter > *:nth-child(5){animation-delay:0.16s;}
+    .view-enter > *:nth-child(6){animation-delay:0.2s;}
+    .view-enter > *:nth-child(7){animation-delay:0.24s;}
+    .view-enter > *:nth-child(n+8){animation-delay:0.28s;}
+    .view-enter > .camera-wrap{animation:fade-in 0.3s ease-out;}
+
+    /* Pill supply ring draws up to its level on view entry */
+    .view-enter .pill-ring circle:nth-child(2){animation:ring-fill 0.7s ease-out 0.25s backwards;}
+
+    /* Reminder alarm: backdrop fades, glass card settles in */
+    .alarm-overlay{animation:fade-in 0.22s ease-out;}
+    .alarm-overlay .alarm-card{animation:scale-in 0.3s ease-out 0.06s backwards;}
+
+    /* Mark-as-taken acknowledgement */
+    .card.just-taken .pill-icon{animation:pulse-good 0.6s ease-out;}
+    .card.just-taken .badge.taken{animation:scale-in 0.25s ease-out;}
+
+    /* Welcome: ambient glow drift + first-show cascade + directional steps */
+    .welcome::before{animation:glow-drift 9s ease-in-out infinite;}
+    .welcome.w-cascade .welcome-dots{animation:fade-in 0.4s ease-out;}
+    .welcome.w-cascade .welcome-mark{animation:scale-in 0.45s ease-out backwards;}
+    .welcome.w-cascade .welcome-title{animation:rise-in 0.35s ease-out 0.1s backwards;}
+    .welcome.w-cascade .welcome-sub{animation:rise-in 0.35s ease-out 0.18s backwards;}
+    .welcome.w-cascade .welcome-features{animation:rise-in 0.35s ease-out 0.26s backwards;}
+    .welcome.w-cascade .welcome-feature:nth-child(1){animation:rise-in 0.35s ease-out 0.32s backwards;}
+    .welcome.w-cascade .welcome-feature:nth-child(2){animation:rise-in 0.35s ease-out 0.4s backwards;}
+    .welcome.w-cascade .welcome-feature:nth-child(3){animation:rise-in 0.35s ease-out 0.48s backwards;}
+    .welcome.w-cascade .welcome-actions{animation:rise-in 0.35s ease-out 0.58s backwards;}
+    .welcome.w-fwd .welcome-inner{animation:slide-in-right 0.28s ease-out;}
+    .welcome.w-back .welcome-inner{animation:slide-in-left 0.28s ease-out;}
+  }
 </style>
 </head>
 <body>
@@ -1057,7 +1106,7 @@ function medIconHtml(med){
       '<circle cx="29" cy="29" r="'+r+'" fill="none" stroke="rgba(20,40,60,0.1)" stroke-width="3.5"/>' +
       '<circle cx="29" cy="29" r="'+r+'" fill="none" stroke="'+ringColor+'" stroke-width="3.5" stroke-linecap="round"' +
         ' stroke-dasharray="'+circ.toFixed(2)+'" stroke-dashoffset="'+(circ * (1 - frac.pct / 100)).toFixed(2)+'"' +
-        ' transform="rotate(-90 29 29)"/>' +
+        ' style="--ring-circ:'+circ.toFixed(2)+'" transform="rotate(-90 29 29)"/>' +
     '</svg>';
   }
   return '<div class="pill-icon" style="background:'+bg+';color:'+fg+';">'+iconPill(22, fg)+ring+'</div>';
@@ -1174,6 +1223,7 @@ function logPrnDose(medId){
   if (med && typeof med.pillsRemaining === 'number' && !isExpired(med)){
     med.pillsRemaining = Math.max(0, med.pillsRemaining - 1);
   }
+  pulseJustTaken('prn_' + medId);
   render();
   if (med) closeBoxIfOpen(med.boxId);
 }
@@ -1251,7 +1301,8 @@ function renderHome(){
         : (isTaken ? '' : '<div class="row-actions"><button class="btn btn-secondary btn-small" onclick="markTaken('+e.med.id+',\''+e.time+'\')">Mark as taken</button>' +
             boxButtonHtml(e.med) +
           '</div>');
-      return '<div class="card'+(expired?' expired-card':'')+'"><div class="med-row">' +
+      var justTaken = state.justTakenKey === key;
+      return '<div class="card'+(expired?' expired-card':'')+(justTaken?' just-taken':'')+'"><div class="med-row">' +
         medIconHtml(e.med) +
         '<div style="flex:1;">' +
           '<p class="med-name">'+escapeHtml(e.med.name)+brandNameHtml(e.med)+'</p>' +
@@ -1309,7 +1360,8 @@ function renderHome(){
         : '<div class="row-actions"><button class="btn btn-secondary btn-small" onclick="logPrnDose('+med.id+')">Log a dose now</button>' +
             boxButtonHtml(med) +
           '</div>';
-      return '<div class="card'+(expired?' expired-card':'')+'"><div class="med-row">' +
+      var justTaken = state.justTakenKey === ('prn_' + med.id);
+      return '<div class="card'+(expired?' expired-card':'')+(justTaken?' just-taken':'')+'"><div class="med-row">' +
         medIconHtml(med) +
         '<div style="flex:1;">' +
           '<p class="med-name">'+escapeHtml(med.name)+brandNameHtml(med)+'</p>' +
@@ -1741,10 +1793,16 @@ function dispenserSectionHtml(){
   '</div>';
 }
 
+var lastOverlayKey = null;
 function renderOverlay(){
   var slot = document.getElementById('overlaySlot');
   if (state.activeAlert){
     var a = state.activeAlert;
+    // Skip rebuilding the same alert's DOM on unrelated re-renders,
+    // so its entrance animation plays once, not on every render().
+    var overlayKey = a.med.id + '_' + a.time + '_' + (a.real ? '1' : '0');
+    if (overlayKey === lastOverlayKey) return;
+    lastOverlayKey = overlayKey;
     var statusText = a.real ? 'Sent as a real notification' : "Notifications aren't available in this preview — opened directly";
     var statusClass = a.real ? 'granted' : 'blocked';
     slot.innerHTML =
@@ -1761,6 +1819,7 @@ function renderOverlay(){
       '</div>';
     return;
   }
+  lastOverlayKey = null;
   slot.innerHTML = '';
 }
 
@@ -1806,8 +1865,20 @@ function markTaken(medId, time){
   if (med && typeof med.pillsRemaining === 'number' && !isExpired(med)){
     med.pillsRemaining = Math.max(0, med.pillsRemaining - 1);
   }
+  pulseJustTaken(key);
   render();
   if (med) closeBoxIfOpen(med.boxId);
+}
+
+function pulseJustTaken(key){
+  state.justTakenKey = key;
+  // Clear the class directly after the animation so a later re-render
+  // (which rebuilds the DOM) doesn't replay the pulse.
+  setTimeout(function(){
+    state.justTakenKey = null;
+    var el = document.querySelector('.card.just-taken');
+    if (el) el.classList.remove('just-taken');
+  }, 800);
 }
 
 function toggleTime(t){
@@ -2644,6 +2715,7 @@ function finishWelcome(){
   state.onboarded = true;
   state.welcomeStep = 0;
   state.view = 'home';
+  lastRenderedView = null; // home was already rendered beneath the welcome — force its entrance cascade on reveal
   render();
 }
 
@@ -2658,10 +2730,24 @@ function welcomeFeatureHtml(icon, title, note){
   '</div>';
 }
 
+var lastWelcome = { shown: false, step: -1 };
 function renderWelcome(){
   var slot = document.getElementById('welcomeSlot');
-  if (state.onboarded){ slot.innerHTML = ''; return; }
+  if (state.onboarded){
+    slot.innerHTML = '';
+    lastWelcome.shown = false;
+    lastWelcome.step = -1;
+    return;
+  }
   var step = state.welcomeStep || 0;
+  // Animate on first show (cascade) and on step change (directional slide);
+  // same-step re-renders (e.g. tapping a text-size chip) stay static.
+  var animClass = '';
+  if (!lastWelcome.shown) animClass = ' w-cascade';
+  else if (step > lastWelcome.step) animClass = ' w-fwd';
+  else if (step < lastWelcome.step) animClass = ' w-back';
+  lastWelcome.shown = true;
+  lastWelcome.step = step;
   var dots = [0,1,2].map(function(i){
     return '<div class="welcome-dot'+(i===step?' active':'')+'"></div>';
   }).join('');
@@ -2715,13 +2801,19 @@ function renderWelcome(){
       '</div>';
   }
   slot.innerHTML =
-    '<div class="welcome"><div class="welcome-inner">' +
+    '<div class="welcome'+animClass+'"><div class="welcome-inner">' +
       '<div class="welcome-dots">'+dots+'</div>' +
       body +
     '</div></div>';
 }
 
+var lastRenderedView = null;
 function render(){
+  // Entrance animations fire on view change only — re-renders within a view
+  // (toggles, marking doses, chat) must not replay them.
+  var viewChanged = state.view !== lastRenderedView;
+  lastRenderedView = state.view;
+  document.getElementById('screen').classList.toggle('view-enter', viewChanged);
   renderWelcome();
   renderTabbar();
   if (state.view === 'home') renderHome();
